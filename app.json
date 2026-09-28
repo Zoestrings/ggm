@@ -19,6 +19,21 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow GGM to use your location to verify attendance at church activities."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow GGM to use your camera to capture verification selfies."
+        }
+      ],
+      "expo-sharing"
+    ]
   }
 }
