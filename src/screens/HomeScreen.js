@@ -291,7 +291,7 @@ export default function HomeScreen({ navigation }) {
             <View style={styles.noActivityBox}>
               <Text style={styles.noActivityTitle}>No activity open right now</Text>
               <Text style={styles.noActivitySubtitle}>
-                Attendance opens on the first Tuesday of the month at 6:00 AM.
+                Attendance opens every Tuesday at 6:00 AM.
               </Text>
             </View>
           )}
