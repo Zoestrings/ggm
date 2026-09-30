@@ -24,6 +24,7 @@ export default function HomeScreen({ navigation }) {
   const [activeActivity, setActiveActivity] = useState(null);
   const [loadingActivity, setLoadingActivity] = useState(true);
   const [recentHistory, setRecentHistory] = useState([]);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
 
   // Register push notifications on first mount
   useEffect(() => {
@@ -124,7 +125,22 @@ export default function HomeScreen({ navigation }) {
             setRecentHistory(historyData);
           }
 
-          // 5. Try syncing any queued offline check-ins
+          // 5. Query unread notifications count
+          try {
+            const { count: unreadCount } = await supabase
+              .from('notifications')
+              .select('*', { count: 'exact', head: true })
+              .eq('member_id', currentUser.id)
+              .is('read_at', null);
+
+            if (isMounted) {
+              setUnreadNotifications(unreadCount || 0);
+            }
+          } catch (_notifErr) {
+            // Notifications table is optional
+          }
+
+          // 6. Try syncing any queued offline check-ins
           try {
             await syncPendingCheckins();
           } catch (_syncErr) {
@@ -184,13 +200,14 @@ export default function HomeScreen({ navigation }) {
   }
 
   const meta = user?.user_metadata || {};
-  const name = userProfile?.name || meta.full_name || 'Akpodoma Goodluck';
-  const instrument = userProfile?.instrument || meta.instrument || 'Drums';
-  const phone = userProfile?.phone || meta.phone || '08119704551';
-  const email = userProfile?.email || user?.email || 'akpodomagoodluck9@gmail.com';
+  const name = userProfile?.name || meta.full_name || 'Member';
+  const instrument = userProfile?.instrument || meta.instrument || '';
+  const phone = userProfile?.phone || meta.phone || '';
+  const email = userProfile?.email || user?.email || '';
   
-  const role = userProfile?.role || (email.toLowerCase().includes('akpodoma') ? 'super_admin' : 'member');
-  const isAdmin = role === 'admin' || role === 'super_admin';
+  const role = userProfile?.role || 'member';
+  const isSuperAdmin = role === 'super_admin';
+  const isSubAdmin = role === 'sub_admin';
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
@@ -214,35 +231,124 @@ export default function HomeScreen({ navigation }) {
             <Text style={styles.headerOrgSubtitle}>Gods Ministry Inc.</Text>
           </View>
         </View>
-        <TouchableOpacity
-          style={styles.settingsButton}
-          onPress={() => navigation.navigate('AccountSettings')}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="settings-outline" size={22} color={colors.textSecondary} />
-        </TouchableOpacity>
+        <View style={styles.headerRight}>
+          <TouchableOpacity
+            style={styles.headerIconButton}
+            onPress={() => navigation.navigate('Notifications')}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="notifications-outline" size={21} color={colors.textSecondary} />
+            {unreadNotifications > 0 && <View style={styles.unreadBadgeDot} />}
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.headerIconButton}
+            onPress={() => navigation.navigate('AccountSettings')}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="settings-outline" size={21} color={colors.textSecondary} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Admin Section (Clean, subtle blue tint, not glowing) */}
-        {isAdmin && (
-          <View style={styles.adminSection}>
+        {/* Super Admin Section */}
+        {isSuperAdmin && (
+          <View style={styles.superAdminSection}>
             <View style={styles.adminTextGroup}>
               <View style={styles.adminBadgeRow}>
                 <Ionicons name="shield-checkmark" size={16} color={colors.primary} />
-                <Text style={styles.adminSectionTitle}>ADMIN PORTAL</Text>
+                <Text style={styles.adminSectionTitle}>SUPER ADMIN PORTAL</Text>
               </View>
-              <Text style={styles.adminSectionSubtitle}>You have admin privileges</Text>
+              <Text style={styles.adminSectionSubtitle}>Full administrative oversight & reporting</Text>
             </View>
+
+            {/* Quick Actions Grid */}
+            <View style={styles.adminActionsGrid}>
+              <TouchableOpacity
+                style={styles.actionGridItem}
+                onPress={() => navigation.navigate('AttendanceList', { activity: activeActivity })}
+                activeOpacity={0.75}
+              >
+                <Ionicons name="list-outline" size={18} color={colors.primary} />
+                <Text style={styles.actionGridText}>Today's List</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.actionGridItem}
+                onPress={() => navigation.navigate('GenerateReport', { activity: activeActivity })}
+                activeOpacity={0.75}
+              >
+                <Ionicons name="document-text-outline" size={18} color={colors.primary} />
+                <Text style={styles.actionGridText}>PDF Reports</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.actionGridItem}
+                onPress={() => navigation.navigate('TopPerformers')}
+                activeOpacity={0.75}
+              >
+                <Ionicons name="trophy-outline" size={18} color="#D97706" />
+                <Text style={styles.actionGridText}>Top Performers</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.actionGridItem}
+                onPress={() => navigation.navigate('ManageRoles')}
+                activeOpacity={0.75}
+              >
+                <Ionicons name="people-outline" size={18} color={colors.primary} />
+                <Text style={styles.actionGridText}>Manage Roles</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.actionGridItem}
+                onPress={() => navigation.navigate('AllAttendance')}
+                activeOpacity={0.75}
+              >
+                <Ionicons name="calendar-outline" size={18} color={colors.primary} />
+                <Text style={styles.actionGridText}>All Records</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.actionGridItem}
+                onPress={() => navigation.navigate('AuditLog')}
+                activeOpacity={0.75}
+              >
+                <Ionicons name="shield-outline" size={18} color={colors.primary} />
+                <Text style={styles.actionGridText}>Audit Log</Text>
+              </TouchableOpacity>
+            </View>
+
             <TouchableOpacity
-              style={styles.adminLinkButton}
-              onPress={() => navigation.navigate('AdminDashboard')}
+              style={styles.adminDashboardFullButton}
+              onPress={() => navigation.navigate('SuperAdminDashboard')}
               activeOpacity={0.8}
             >
-              <Text style={styles.adminLinkButtonText}>Open Admin Dashboard →</Text>
+              <Text style={styles.adminDashboardFullButtonText}>Open Super Admin Dashboard →</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Sub Admin Section */}
+        {isSubAdmin && (
+          <View style={styles.subAdminSection}>
+            <View style={styles.adminBadgeRow}>
+              <Ionicons name="eye-outline" size={16} color={colors.primary} />
+              <Text style={styles.adminSectionTitle}>SUB ADMIN PORTAL</Text>
+            </View>
+            <Text style={styles.adminSectionSubtitle}>
+              View today's check-in list with member photos. (Read-only)
+            </Text>
+            <TouchableOpacity
+              style={styles.subAdminLinkButton}
+              onPress={() => navigation.navigate('SubAdminAttendance', { activity: activeActivity })}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="people" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+              <Text style={styles.subAdminLinkButtonText}>View Current Activity Attendance →</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -459,7 +565,12 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     marginTop: 1,
   },
-  settingsButton: {
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerIconButton: {
     width: 38,
     height: 38,
     borderRadius: 8,
@@ -468,27 +579,47 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
+    position: 'relative',
+  },
+  unreadBadgeDot: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#DC2626',
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
   },
   scrollContent: {
     paddingHorizontal: spacing.pagePadding,
     paddingTop: 16,
     paddingBottom: 20,
   },
-  adminSection: {
+  superAdminSection: {
     backgroundColor: colors.primaryLight,
     borderWidth: 1,
     borderColor: colors.primaryBorder,
-    borderRadius: 10,
-    padding: 14,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+  },
+  subAdminSection: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    padding: 16,
     marginBottom: 20,
   },
   adminTextGroup: {
-    marginBottom: 10,
+    marginBottom: 12,
   },
   adminBadgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 3,
+    marginBottom: 4,
   },
   adminSectionTitle: {
     fontSize: 12,
@@ -500,18 +631,58 @@ const styles = StyleSheet.create({
   adminSectionSubtitle: {
     fontSize: 13,
     color: colors.textSecondary,
+    lineHeight: 18,
   },
-  adminLinkButton: {
-    alignSelf: 'flex-start',
-    backgroundColor: colors.primary,
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 6,
+  adminActionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 14,
   },
-  adminLinkButtonText: {
-    color: '#FFFFFF',
-    fontSize: 12,
+  actionGridItem: {
+    flexBasis: '31%',
+    flexGrow: 1,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionGridText: {
+    fontSize: 11,
     fontWeight: '600',
+    color: colors.textPrimary,
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  adminDashboardFullButton: {
+    backgroundColor: colors.primary,
+    borderRadius: 8,
+    paddingVertical: 11,
+    alignItems: 'center',
+  },
+  adminDashboardFullButtonText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  subAdminLinkButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+    borderRadius: 8,
+    paddingVertical: 11,
+    paddingHorizontal: 14,
+    marginTop: 10,
+  },
+  subAdminLinkButtonText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
   },
   welcomeSection: {
     marginBottom: 20,

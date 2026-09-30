@@ -1,3 +1,9 @@
+-- =============================================================================
+-- HISTORICAL FILE — DO NOT REUSE
+-- This file was used during initial development setup.
+-- Any real credentials, seed data, or developer info have been removed from
+-- the live app. Do not copy values from this file into new migrations.
+-- =============================================================================
 -- ==========================================================
 -- GGM INSTRUMENTALISTS APP - PHASE 3 ADMIN SETUP SQL
 -- Run this in your Supabase SQL Editor

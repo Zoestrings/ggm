@@ -46,4 +46,8 @@ yarn-error.*
 
 # supabase
 supabase/.temp/
+supabase/.env.local
+
+# misc
+images.jfif
 

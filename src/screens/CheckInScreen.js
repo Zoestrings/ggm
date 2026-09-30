@@ -264,6 +264,7 @@ export default function CheckInScreen({ route, navigation }) {
         accuracy_m: userLocation.coords.accuracy || 0,
         selfie_url: fileName,
         verification_status: 'verified',
+        check_in_method: 'live',
       });
 
       if (insertError) {

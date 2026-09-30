@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "ggm",
+    "name": "GGM Instrumentalist",
     "slug": "ggm",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -16,7 +16,13 @@
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
-      }
+      },
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -35,6 +41,11 @@
         }
       ],
       "expo-sharing"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "62669f1f-9cc4-4c88-81ac-d60a99d7f8eb"
+      }
+    }
   }
 }

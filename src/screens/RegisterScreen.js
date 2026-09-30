@@ -16,12 +16,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
 import { colors, spacing } from '../theme';
+import PasswordField from '../components/PasswordField';
 
 export default function RegisterScreen({ navigation }) {
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isPasswordValid, setIsPasswordValid] = useState(false);
   const [instrument, setInstrument] = useState('Keyboard');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -61,8 +63,8 @@ export default function RegisterScreen({ navigation }) {
       Alert.alert('Missing Fields', 'Please provide an email address or phone number.');
       return;
     }
-    if (password.trim().length < 6) {
-      Alert.alert('Weak Password', 'Password should be at least 6 characters.');
+    if (!isPasswordValid) {
+      Alert.alert('Incomplete Password', 'Please ensure your password has at least 6 characters, including letters and numbers.');
       return;
     }
 
@@ -292,7 +294,7 @@ export default function RegisterScreen({ navigation }) {
                   />
                   <TextInput
                     style={styles.input}
-                    placeholder="e.g. Akpodoma Goodluck"
+                    placeholder="e.g. John Okonkwo"
                     placeholderTextColor={colors.textLight}
                     value={fullName}
                     onChangeText={setFullName}
@@ -312,7 +314,7 @@ export default function RegisterScreen({ navigation }) {
                   />
                   <TextInput
                     style={styles.input}
-                    placeholder="08119704551"
+                    placeholder="08012345678"
                     placeholderTextColor={colors.textLight}
                     value={phone}
                     onChangeText={setPhone}
@@ -332,7 +334,7 @@ export default function RegisterScreen({ navigation }) {
                   />
                   <TextInput
                     style={styles.input}
-                    placeholder="member@gmail.com"
+                    placeholder="member@example.com"
                     placeholderTextColor={colors.textLight}
                     value={email}
                     onChangeText={setEmail}
@@ -372,42 +374,22 @@ export default function RegisterScreen({ navigation }) {
                 </ScrollView>
               </View>
 
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Password</Text>
-                <View style={styles.inputWrapper}>
-                  <Ionicons
-                    name="lock-closed-outline"
-                    size={18}
-                    color={colors.textMuted}
-                    style={styles.inputIcon}
-                  />
-                  <TextInput
-                    style={[styles.input, { paddingRight: 40 }]}
-                    placeholder="At least 6 characters"
-                    placeholderTextColor={colors.textLight}
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry={!showPassword}
-                  />
-                  <TouchableOpacity
-                    style={styles.eyeButton}
-                    onPress={() => setShowPassword(!showPassword)}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons
-                      name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                      size={18}
-                      color={colors.textMuted}
-                    />
-                  </TouchableOpacity>
-                </View>
-              </View>
+              <PasswordField
+                value={password}
+                onChangeText={setPassword}
+                onValidityChange={setIsPasswordValid}
+                placeholder="At least 6 characters"
+                label="Password"
+              />
 
               {/* Primary Register Button */}
               <TouchableOpacity
-                style={[styles.primaryButton, loading && styles.buttonDisabled]}
+                style={[
+                  styles.primaryButton,
+                  (loading || !isPasswordValid) && styles.buttonDisabled,
+                ]}
                 onPress={handleRegisterSubmit}
-                disabled={loading}
+                disabled={loading || !isPasswordValid}
                 activeOpacity={0.85}
               >
                 {loading ? (

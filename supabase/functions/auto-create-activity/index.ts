@@ -44,8 +44,33 @@ function lagosHourToUTC(date: Date, lagosHour: number): string {
   return new Date(utcMs).toISOString();
 }
 
-Deno.serve(async (_req) => {
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", {
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-cron-secret",
+      },
+    });
+  }
+
   try {
+    const cronSecret = Deno.env.get('CRON_SECRET');
+    const secretHeader = req.headers.get('x-cron-secret');
+    const authHeader = req.headers.get('Authorization') || '';
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+
+    const isAuthorized =
+      (cronSecret && secretHeader === cronSecret) ||
+      (serviceKey && authHeader.includes(serviceKey));
+
+    if (!isAuthorized) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);

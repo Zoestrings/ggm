@@ -103,6 +103,8 @@ export default function PendingReviewScreen({ navigation }) {
                 accuracy_m: item.accuracy_m,
                 selfie_url: item.selfie_storage_path || null,
                 verification_status: 'admin_approved',
+                check_in_method: 'offline_sync',
+                marked_by: currentUser?.id,
               });
 
               if (attError && attError.code !== '23505') throw attError;

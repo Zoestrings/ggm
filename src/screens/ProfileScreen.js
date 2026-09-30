@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -18,6 +19,7 @@ import { decode } from 'base64-arraybuffer';
 import { supabase } from '../lib/supabase';
 import { compressImage } from '../lib/image';
 import { colors, spacing } from '../theme';
+import PasswordField from '../components/PasswordField';
 
 export default function ProfileScreen({ navigation }) {
   const [user, setUser] = useState(null);
@@ -25,6 +27,11 @@ export default function ProfileScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [avatarUrl, setAvatarUrl] = useState(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [changePwVisible, setChangePwVisible] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [isNewPwValid, setIsNewPwValid] = useState(false);
+  const [updatingPw, setUpdatingPw] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -147,6 +154,45 @@ export default function ProfileScreen({ navigation }) {
     ]);
   };
 
+  const handleUpdatePassword = async () => {
+    if (!currentPassword.trim()) {
+      Alert.alert('Required', 'Please enter your current password.');
+      return;
+    }
+    if (!isNewPwValid) {
+      Alert.alert('Incomplete Password', 'Please ensure your new password satisfies all required criteria.');
+      return;
+    }
+
+    setUpdatingPw(true);
+    try {
+      // 1. Re-authenticate with current password to verify identity
+      const userEmail = user?.email || userProfile?.email;
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: userEmail,
+        password: currentPassword,
+      });
+
+      if (signInError) {
+        Alert.alert('Verification Failed', 'Current password is incorrect.');
+        return;
+      }
+
+      // 2. Update to new password
+      const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+      if (updateError) throw updateError;
+
+      setChangePwVisible(false);
+      setCurrentPassword('');
+      setNewPassword('');
+      Alert.alert('Password Updated', 'Your password has been changed successfully.');
+    } catch (err) {
+      Alert.alert('Update Failed', err.message || 'Could not update password. Try again.');
+    } finally {
+      setUpdatingPw(false);
+    }
+  };
+
   const handleSignOut = () => {
     Alert.alert(
       'Log Out',
@@ -257,6 +303,25 @@ export default function ProfileScreen({ navigation }) {
           <DetailRow icon="people-outline" label="Department" value="GGM Instrumentalists" last />
         </View>
 
+        {/* Security / Change Password */}
+        <View style={styles.detailsCard}>
+          <Text style={styles.cardSectionLabel}>SECURITY</Text>
+          <TouchableOpacity
+            style={styles.actionRow}
+            onPress={() => setChangePwVisible(true)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.detailIconWrap}>
+              <Ionicons name="key-outline" size={17} color={colors.primary} />
+            </View>
+            <View style={styles.detailText}>
+              <Text style={styles.detailLabel}>Password</Text>
+              <Text style={styles.detailValue}>Change Password</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textLight} />
+          </TouchableOpacity>
+        </View>
+
         {/* Sign Out */}
         <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut} activeOpacity={0.85}>
           <Ionicons name="log-out-outline" size={18} color={colors.error} style={{ marginRight: 8 }} />
@@ -265,6 +330,69 @@ export default function ProfileScreen({ navigation }) {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* Change Password Modal */}
+      <Modal
+        visible={changePwVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setChangePwVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Change Password</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setChangePwVisible(false);
+                  setCurrentPassword('');
+                  setNewPassword('');
+                }}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="close" size={22} color={colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalSubtitle}>
+              Please enter your current password and your new password.
+            </Text>
+
+            <PasswordField
+              value={currentPassword}
+              onChangeText={setCurrentPassword}
+              placeholder="Enter current password"
+              label="Current Password"
+              showStrengthBar={false}
+              showChecklist={false}
+            />
+
+            <PasswordField
+              value={newPassword}
+              onChangeText={setNewPassword}
+              onValidityChange={setIsNewPwValid}
+              placeholder="Enter new password"
+              label="New Password"
+            />
+
+            <TouchableOpacity
+              style={[
+                styles.modalSubmitButton,
+                (!currentPassword.trim() || !isNewPwValid || updatingPw) && styles.modalSubmitDisabled,
+              ]}
+              onPress={handleUpdatePassword}
+              disabled={!currentPassword.trim() || !isNewPwValid || updatingPw}
+              activeOpacity={0.85}
+            >
+              {updatingPw ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text style={styles.modalSubmitText}>Update Password</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -350,4 +478,53 @@ const styles = StyleSheet.create({
     paddingVertical: 14, marginTop: 6, backgroundColor: colors.errorBg,
   },
   signOutText: { fontSize: 14, fontWeight: '700', color: colors.error },
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  modalCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  modalTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  modalSubtitle: {
+    fontSize: 13,
+    color: colors.textMuted,
+    marginBottom: 16,
+  },
+  modalSubmitButton: {
+    backgroundColor: colors.primary,
+    borderRadius: 8,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  modalSubmitDisabled: {
+    opacity: 0.5,
+  },
+  modalSubmitText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
 });
