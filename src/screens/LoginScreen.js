@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { colors, spacing } from '../theme';
 
@@ -42,6 +43,22 @@ export default function LoginScreen({ navigation }) {
       });
 
       if (error) throw error;
+
+      // Cache fresh profile from public.users table immediately
+      if (data?.user?.id) {
+        try {
+          const { data: profile } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', data.user.id)
+            .single();
+          if (profile) {
+            await AsyncStorage.setItem('@ggm_user_profile', JSON.stringify(profile));
+          }
+        } catch (_cacheErr) {
+          // Non-blocking
+        }
+      }
 
       navigation.replace('Home');
     } catch (error) {

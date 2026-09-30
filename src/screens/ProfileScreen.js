@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import { decode } from 'base64-arraybuffer';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { compressImage } from '../lib/image';
 import { colors, spacing } from '../theme';
@@ -44,6 +45,18 @@ export default function ProfileScreen({ navigation }) {
           if (!authUser) { navigation.replace('Login'); return; }
           if (isMounted) setUser(authUser);
 
+          // 1. Check cached profile first to eliminate UI flicker
+          try {
+            const cached = await AsyncStorage.getItem('@ggm_user_profile');
+            if (cached && isMounted) {
+              const parsed = JSON.parse(cached);
+              if (parsed && parsed.id === authUser.id) {
+                setUserProfile(parsed);
+              }
+            }
+          } catch (_cErr) {}
+
+          // 2. Fetch fresh user profile from public.users table (source of truth)
           const { data: profile } = await supabase
             .from('users')
             .select('*')
@@ -51,7 +64,10 @@ export default function ProfileScreen({ navigation }) {
             .single();
 
           if (isMounted) {
-            setUserProfile(profile);
+            if (profile) {
+              setUserProfile(profile);
+              await AsyncStorage.setItem('@ggm_user_profile', JSON.stringify(profile));
+            }
             if (profile?.avatar_url) {
               if (profile.avatar_url.startsWith('http')) {
                 setAvatarUrl(profile.avatar_url);
@@ -204,6 +220,7 @@ export default function ProfileScreen({ navigation }) {
           style: 'destructive',
           onPress: async () => {
             try {
+              await AsyncStorage.removeItem('@ggm_user_profile');
               await supabase.auth.signOut();
               navigation.replace('Login');
             } catch (error) {
@@ -228,7 +245,7 @@ export default function ProfileScreen({ navigation }) {
   const instrument = userProfile?.instrument || meta.instrument || '—';
   const phone = userProfile?.phone || meta.phone || '—';
   const email = userProfile?.email || user?.email || '—';
-  const role = userProfile?.role || 'member';
+  const role = userProfile?.role || meta.role || 'member';
   const initials = name.split(' ').map((n) => n.charAt(0).toUpperCase()).slice(0, 2).join('');
 
   return (

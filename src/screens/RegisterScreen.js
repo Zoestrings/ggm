@@ -180,6 +180,7 @@ export default function RegisterScreen({ navigation }) {
         instrument: instrument,
         role: 'member',
         email_verified: isEmailVerified,
+        password_hash: 'managed_by_supabase_auth',
         created_at: new Date().toISOString(),
       };
 
