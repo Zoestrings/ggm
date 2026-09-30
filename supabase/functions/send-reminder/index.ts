@@ -50,18 +50,59 @@ serve(async (req) => {
     }
 
     // 2. Parse payload
-    let reminderType = "eve"; // 'eve' (Monday evening) | 'morning' (Tuesday morning)
+    let reminderType = "monthly_reminder"; // 'monthly_reminder' | 'morning' | 'eve'
+    let force = false;
     try {
       const body = await req.json();
       if (body?.type) reminderType = body.type;
+      if (body?.force) force = Boolean(body.force);
     } catch (_err) {
-      // default is eve
+      // default is monthly_reminder
     }
 
-    // 3. Fetch active or upcoming activity
+    // 3. Determine current WAT time and date
     const nowUtc = new Date();
     // West Africa Time (WAT = UTC+1)
-    const nowLagos = new Date(nowUtc.getTime() + 1 * 3600_000);
+    const nowWat = new Date(nowUtc.getTime() + 1 * 3600_000);
+    const currentYear = nowWat.getUTCFullYear();
+    const currentMonth = nowWat.getUTCMonth(); // 0-indexed: 0 = Jan, 1 = Feb, ...
+    const currentDay = nowWat.getUTCDate();
+
+    // Total days in current month (day 0 of next month gives last day of current)
+    const daysInMonth = new Date(Date.UTC(currentYear, currentMonth + 1, 0)).getUTCDate();
+    const isLastDayOfMonth = (currentDay === daysInMonth);
+
+    // If scheduled monthly reminder, verify today is the last day of the month (e.g. 30th/31st, or 28th/29th in Feb)
+    if (reminderType === "monthly_reminder" && !isLastDayOfMonth && !force) {
+      return new Response(
+        JSON.stringify({
+          skipped: true,
+          reason: `Today (${currentDay}) is not the last day of the month (${daysInMonth}). Skipping reminder.`,
+          current_wat_date: nowWat.toISOString().split("T")[0],
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Helper: compute next First Tuesday from current WAT date
+    function getNextFirstTuesday(watDate: Date): Date {
+      const cur = new Date(watDate.getTime() + 24 * 3600_000);
+      for (let i = 0; i < 35; i++) {
+        const candidate = new Date(cur.getTime() + i * 24 * 3600_000);
+        // getUTCDay: 0=Sun, 1=Mon, 2=Tue. First Tuesday of month is day 1 to 7.
+        if (candidate.getUTCDay() === 2 && candidate.getUTCDate() <= 7) {
+          return candidate;
+        }
+      }
+      return cur;
+    }
+
+    const nextFirstTuesday = getNextFirstTuesday(nowWat);
+    const formattedDate = nextFirstTuesday.toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
 
     const { data: upcomingActs } = await supabase
       .from("activities")
@@ -94,8 +135,8 @@ serve(async (req) => {
       notifTitle = "Church Cleaning & Sound Check Open";
       notifBody = "Good morning! Today's attendance session is now open at church HQ. Please arrive on time and verify attendance on arrival.";
     } else {
-      notifTitle = "Reminder: Cleaning & Sound Check Tomorrow";
-      notifBody = "Greetings! Tomorrow is First Tuesday cleaning and sound check at church HQ. Doors open at 6:00 AM. See you there!";
+      notifTitle = "First Tuesday Cleaning Reminder";
+      notifBody = `Instrument cleaning is on Tuesday, ${formattedDate}, at 6:00 AM. Please arrive on time with your instrument.`;
     }
 
     // 6. Send Push Notifications via Expo Push API in chunks of 100

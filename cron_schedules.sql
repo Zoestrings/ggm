@@ -34,12 +34,17 @@ select cron.schedule(
 );
 
 
--- ── 2. Send Monday Eve Reminder (6:00 PM WAT = 17:00 UTC) ───────────────────
--- Runs every Monday at 17:00 UTC (checks if tomorrow is First Tuesday before sending)
--- Cron expression: '0 17 * * 1'
+-- ── 2. Send Monthly Reminder (6:00 PM WAT = 17:00 UTC) ───────────────────────
+-- Runs on days 28-31 of every month at 17:00 UTC (= 18:00 / 6:00 PM WAT).
+-- The Edge Function checks if today is the last day of the month before sending.
+-- Cron expression: '0 17 28-31 * *'
+
+-- Unschedule old Monday reminder if previously registered
+select cron.unschedule('send-eve-attendance-reminder');
+
 select cron.schedule(
-  'send-eve-attendance-reminder',
-  '0 17 * * 1',
+  'send-monthly-attendance-reminder',
+  '0 17 28-31 * *',
   $$
   select
     net.http_post(
@@ -48,7 +53,7 @@ select cron.schedule(
         'Content-Type', 'application/json',
         'x-cron-secret', '<YOUR_CRON_SECRET>'
       ),
-      body:=jsonb_build_object('type', 'eve')
+      body:=jsonb_build_object('type', 'monthly_reminder')
     ) as request_id;
   $$
 );
