@@ -1,6 +1,15 @@
 {
-  "compilerOptions": {},
-  "extends": "expo/tsconfig.base",
+  "extends": "expo/tsconfig.base.json",
+  "compilerOptions": {
+    "strict": true,
+    "allowJs": true
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "**/*.js",
+    "**/*.jsx"
+  ],
   "exclude": [
     "node_modules",
     "supabase"
