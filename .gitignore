@@ -48,6 +48,9 @@ yarn-error.*
 supabase/.temp/
 supabase/.env.local
 
+# binaries
+*.apk
+
 # misc
 images.jfif
 

@@ -58,11 +58,11 @@ alter table public.activities
   add column if not exists location_name text default 'God''s Grace Ministry Int''l Headquarters',
   add column if not exists location_address text default '58 Arubayi Street, Okumagba Layout, Warri, Delta State, Nigeria';
 
--- 5. Lock church location coordinates & 120m radius
+-- 5. Lock church location coordinates & 150m radius
 update public.activities
-set geofence_lat = 5.526180,
-    geofence_lng = 5.742390,
-    geofence_radius_m = 120,
+set geofence_lat = 5.53808,
+    geofence_lng = 5.75185,
+    geofence_radius_m = 150,
     max_accuracy_m = 80,
     location_name = 'God''s Grace Ministry Int''l Headquarters',
     location_address = '58 Arubayi Street, Okumagba Layout, Warri, Delta State, Nigeria'

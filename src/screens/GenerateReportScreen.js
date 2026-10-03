@@ -477,7 +477,7 @@ export default function GenerateReportScreen({ route, navigation }) {
           </View>
 
           <Text style={styles.activityName}>{currentActivity?.name || 'Musician Activity'}</Text>
-          <Text style={styles.activityLocation}>Gods Ministry Inc. • GGM Instrumentalists Dept.</Text>
+          <Text style={styles.activityLocation}>{currentActivity?.location_name || 'Gods Ministry Inc. • GGM Instrumentalists Dept.'}</Text>
 
           <View style={styles.divider} />
 

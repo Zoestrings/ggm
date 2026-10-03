@@ -104,8 +104,8 @@ export default function CheckInScreen({ route, navigation }) {
       setStatusMessage('Verifying venue boundaries...');
       const geofenceLat = activity.geofence_lat;
       const geofenceLng = activity.geofence_lng;
-      const geofenceRadius = activity.geofence_radius_m || 100;
-      const maxAccuracy = activity.max_accuracy_m || 50;
+      const geofenceRadius = activity.geofence_radius_m || 150;
+      const maxAccuracy = activity.max_accuracy_m || 80;
 
       if (geofenceLat !== null && geofenceLng !== null && geofenceLat !== undefined) {
         const distance = getDistanceMeters(userLat, userLng, geofenceLat, geofenceLng);

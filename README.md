@@ -18,7 +18,7 @@ Access control is enforced directly at the database layer via PostgreSQL **Row L
 |---|---|---|
 | **`super_admin`** | Full Department Administration | • Access Super Admin Dashboard<br>• View live session summaries & historical records<br>• Download/archive official monthly PDF reports with photos<br>• View 3-month Top Performers service rankings (100% / 70% / 40%)<br>• Manage roles (promote to Sub-Admin, demote to Member, transfer Super Admin)<br>• Review & approve offline sync submissions<br>• Inspect system security audit logs |
 | **`sub_admin`** | View-Only Session Supervision | • Access Sub-Admin Portal<br>• View today's attendance list in real time with member selfie photos (signed URLs)<br>• Verified participant totals<br>• Cannot modify records, export PDFs, or alter roles |
-| **`member`** | Self-Service | • Live biometric selfie check-in (restricted to church HQ 120m radius)<br>• Offline check-in queueing with background synchronization<br>• Personal attendance history & profile management<br>• In-app push notifications & reminders |
+| **`member`** | Self-Service | • Live biometric selfie check-in (restricted to church HQ 150m radius)<br>• Offline check-in queueing with background synchronization<br>• Personal attendance history & profile management<br>• In-app push notifications & reminders |
 
 ---
 

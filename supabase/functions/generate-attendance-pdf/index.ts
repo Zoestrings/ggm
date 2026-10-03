@@ -5,7 +5,7 @@ import { PDFDocument, rgb, StandardFonts } from "https://esm.sh/pdf-lib@1.17.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-cron-secret",
 };
 
 // Colors in 0-1 RGB
@@ -29,16 +29,24 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // 1. Authorization: service role or super_admin
+    // 1. Authorization: x-cron-secret (for cron jobs) OR super_admin JWT (for app calls)
+    const cronSecret = Deno.env.get("CRON_SECRET");
+    const secretHeader = req.headers.get("x-cron-secret");
     const authHeader = req.headers.get("Authorization") || "";
     let isAuthorized = false;
     let actorId = null;
 
-    if (authHeader.includes(supabaseServiceKey)) {
+    if (cronSecret && secretHeader === cronSecret) {
+      // Authorized as cron — no user context needed
       isAuthorized = true;
     } else if (authHeader.startsWith("Bearer ")) {
-      const userToken = authHeader.replace("Bearer ", "");
-      const { data: { user } } = await supabase.auth.getUser(userToken);
+      // Use anon-key client so auth.getUser() validates the user JWT correctly
+      const supabaseAnon = createClient(
+        supabaseUrl,
+        Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+        { global: { headers: { Authorization: authHeader } } }
+      );
+      const { data: { user } } = await supabaseAnon.auth.getUser();
       if (user) {
         actorId = user.id;
         const { data: profile } = await supabase
@@ -54,7 +62,7 @@ serve(async (req) => {
 
     if (!isAuthorized) {
       return new Response(
-        JSON.stringify({ error: "Unauthorized. Super Admin access required." }),
+        JSON.stringify({ error: "Unauthorized. Valid x-cron-secret or Super Admin authorization required." }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -68,6 +76,9 @@ serve(async (req) => {
       // Empty body is acceptable
     }
 
+    // Log request for visibility in Supabase Function logs
+    console.log(`[PDF] Auth: ${cronSecret && secretHeader === cronSecret ? 'cron' : 'user'}. IP: ${req.headers.get('x-forwarded-for')}. Activity: ${activityId ?? 'default'}`);
+
     // 3. Fetch Activity
     let activity = null;
     if (activityId) {
@@ -79,14 +90,21 @@ serve(async (req) => {
       if (error || !data) throw new Error("Specified activity not found.");
       activity = data;
     } else {
-      // Take latest finalized or latest activity
+      // Cron sends no activity_id. Find the most recent activity that has
+      // closed (closes_at < now()) and not yet been finalized.
+      const nowIso = new Date().toISOString();
       const { data: latestActs, error } = await supabase
         .from("activities")
         .select("*")
-        .order("opens_at", { ascending: false })
+        .lt("closes_at", nowIso)
+        .is("finalized_at", null)
+        .order("closes_at", { ascending: false })
         .limit(1);
       if (error || !latestActs || latestActs.length === 0) {
-        throw new Error("No activity found to generate report.");
+        return new Response(
+          JSON.stringify({ skipped: true, reason: "no_closed_unfinalized_activity" }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
       activity = latestActs[0];
     }
@@ -219,7 +237,7 @@ serve(async (req) => {
         y -= 18;
 
         // Church Name
-        page.drawText("GOD'S GRACE MINISTRY INT'L HEADQUARTERS", {
+        page.drawText((activity.location_name || "God's Grace Ministry Int'l Headquarters").toUpperCase(), {
           x: MARGIN,
           y: y,
           size: 15,
@@ -315,7 +333,7 @@ serve(async (req) => {
           font: fontBold,
           color: COLOR_GREEN,
         });
-        page.drawText(`Geofence: Church HQ (120m Radius)`, {
+        page.drawText(`Geofence: Church HQ (${activity.geofence_radius_m || 150}m Radius)`, {
           x: statsX,
           y: y - 44,
           size: 8,
