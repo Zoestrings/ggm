@@ -54,20 +54,7 @@ export default function RegisterScreen({ navigation }) {
     return () => clearInterval(timer);
   }, [resendCooldown]);
 
-  const handleRegisterSubmit = async () => {
-    if (!fullName.trim() || !password.trim()) {
-      Alert.alert('Missing Fields', 'Please enter your full name and password.');
-      return;
-    }
-    if (!email.trim() && !phone.trim()) {
-      Alert.alert('Missing Fields', 'Please provide an email address or phone number.');
-      return;
-    }
-    if (!isPasswordValid) {
-      Alert.alert('Incomplete Password', 'Please ensure your password has at least 6 characters, including letters and numbers.');
-      return;
-    }
-
+  const executeRegistration = async () => {
     setLoading(true);
     try {
       // 1. Check total existing users count
@@ -106,6 +93,37 @@ export default function RegisterScreen({ navigation }) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleRegisterSubmit = async () => {
+    const trimmedName = fullName.trim();
+    if (!trimmedName || !password.trim()) {
+      Alert.alert('Missing Fields', 'Please enter your full name and password.');
+      return;
+    }
+    if (!email.trim() && !phone.trim()) {
+      Alert.alert('Missing Fields', 'Please provide an email address or phone number.');
+      return;
+    }
+    if (!isPasswordValid) {
+      Alert.alert('Incomplete Password', 'Please ensure your password has at least 6 characters, including letters and numbers.');
+      return;
+    }
+
+    // Soft encouragement: check for single-word name (no space)
+    if (!trimmedName.includes(' ')) {
+      Alert.alert(
+        'Single-word name',
+        'Your name has only one word. Are you sure this is your full name?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Yes, continue', onPress: () => executeRegistration() },
+        ]
+      );
+      return;
+    }
+
+    await executeRegistration();
   };
 
   const handleVerifyOtp = async () => {
@@ -285,7 +303,7 @@ export default function RegisterScreen({ navigation }) {
             /* Main Registration Form */
             <View style={styles.formCard}>
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Full Name</Text>
+                <Text style={styles.label}>Full Name (First & Surname)</Text>
                 <View style={styles.inputWrapper}>
                   <Ionicons
                     name="person-outline"
@@ -302,6 +320,9 @@ export default function RegisterScreen({ navigation }) {
                     autoCapitalize="words"
                   />
                 </View>
+                <Text style={styles.helperText}>
+                  Enter both your first name and surname so your attendance record shows your full name.
+                </Text>
               </View>
 
               <View style={styles.inputGroup}>
@@ -315,7 +336,7 @@ export default function RegisterScreen({ navigation }) {
                   />
                   <TextInput
                     style={styles.input}
-                    placeholder="08012345678"
+                    placeholder="e.g. 08012345678"
                     placeholderTextColor={colors.textLight}
                     value={phone}
                     onChangeText={setPhone}
@@ -483,6 +504,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.textSecondary,
     marginBottom: 6,
+  },
+  helperText: {
+    fontSize: 11,
+    color: colors.textMuted,
+    fontStyle: 'italic',
+    marginTop: 4,
   },
   inputWrapper: {
     flexDirection: 'row',
