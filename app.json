@@ -24,9 +24,10 @@
         "android.permission.RECORD_AUDIO"
       ]
     },
-    "web": {
-      "favicon": "./assets/favicon.png"
-    },
+    "platforms": [
+      "android",
+      "ios"
+    ],
     "plugins": [
       [
         "expo-location",
