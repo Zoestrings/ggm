@@ -122,8 +122,8 @@ export default function GenerateReportScreen({ route, navigation }) {
 
       const tableRowsHtml = attendanceRecords
         .map((rec, index) => {
-          const name = rec.user?.name || 'Instrumentalist';
-          const instrument = rec.user?.instrument || 'Musician';
+          const name = rec.user?.name || 'Former member';
+          const instrument = (rec.user?.instrument && rec.user.instrument !== 'Musician') ? rec.user.instrument : 'Not specified';
           const time = rec.checked_in_at
             ? new Date(rec.checked_in_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             : 'N/A';

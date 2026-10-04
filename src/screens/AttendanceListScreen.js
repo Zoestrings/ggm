@@ -108,7 +108,7 @@ export default function AttendanceListScreen({ route, navigation }) {
 
           const enriched = rawAttendance.map((a) => ({
             ...a,
-            user: usersMap[a.member_id] || { name: 'Unknown Musician', instrument: 'Musician' },
+            user: usersMap[a.member_id] || { name: 'Former member', instrument: 'Not specified' },
           }));
 
           setAttendanceList(enriched);
@@ -151,8 +151,8 @@ export default function AttendanceListScreen({ route, navigation }) {
   };
 
   const renderItem = ({ item }) => {
-    const memberName = item.user?.name || 'Instrumentalist';
-    const instrument = item.user?.instrument || 'Musician';
+    const memberName = item.user?.name || 'Former member';
+    const instrument = (item.user?.instrument && item.user.instrument !== 'Musician') ? item.user.instrument : 'Not specified';
     const timeFormatted = item.checked_in_at
       ? new Date(item.checked_in_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       : 'N/A';

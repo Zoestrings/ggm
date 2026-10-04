@@ -124,7 +124,7 @@ export default function AllAttendanceScreen({ navigation }) {
   };
 
   const renderAttendanceItem = ({ item }) => {
-    const memberName = item.user?.name || 'Musician';
+    const memberName = item.user?.name || 'Former member';
     const instrument = item.user?.instrument || 'Instrumentalist';
     const activityName = item.activity?.name || 'Session';
     const timeFormatted = item.checked_in_at

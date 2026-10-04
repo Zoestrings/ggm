@@ -31,6 +31,7 @@ export default function AttendanceDetailScreen({ route, navigation }) {
     try {
       let currentRecord = attendance;
       if (attendanceId) {
+        // 1. Try relationship join
         const { data, error } = await supabase
           .from('attendance')
           .select(`
@@ -51,10 +52,36 @@ export default function AttendanceDetailScreen({ route, navigation }) {
 
         if (!error && data) {
           currentRecord = data;
-          setAttendance(data);
         } else if (error) {
-          console.warn('Error fetching attendance with users join:', error.message);
+          // Direct select fallback if PostgREST relationship join fails
+          const { data: directAtt } = await supabase
+            .from('attendance')
+            .select('*')
+            .eq('id', attendanceId)
+            .single();
+          if (directAtt) currentRecord = directAtt;
         }
+
+        // 2. Direct second query on public.users by member_id
+        const targetMemberId = currentRecord?.member_id || record?.member_id;
+        if (targetMemberId) {
+          const { data: userProfile } = await supabase
+            .from('users')
+            .select('id, name, phone, email, instrument')
+            .eq('id', targetMemberId)
+            .maybeSingle();
+
+          if (userProfile) {
+            currentRecord = {
+              ...currentRecord,
+              users: userProfile,
+            };
+          } else {
+            console.warn(`[AttendanceDetail] Could not load user profile for member_id: ${targetMemberId}`);
+          }
+        }
+
+        setAttendance(currentRecord);
       }
 
       // Generate signed URL if selfie exists
@@ -80,11 +107,17 @@ export default function AttendanceDetailScreen({ route, navigation }) {
     }
   };
 
-  const userData = attendance?.users || attendance?.user || {};
-  const memberName = userData?.name || 'Former member';
-  const phone = userData?.phone || 'Not available';
-  const email = userData?.email || 'Not available';
-  const instrument = userData?.instrument || 'Not specified';
+  const rawUsers = attendance?.users;
+  const userObj = Array.isArray(rawUsers)
+    ? rawUsers[0]
+    : (rawUsers || (attendance?.user?.name !== 'Unknown Musician' ? attendance?.user : null) || {});
+
+  const memberName = userObj?.name || 'Former member';
+  const phone = userObj?.phone || 'Not available';
+  const email = userObj?.email || 'Not available';
+  const instrument = (userObj?.instrument && userObj.instrument !== 'Musician')
+    ? userObj.instrument
+    : 'Not specified';
 
   const checkInDate = attendance?.checked_in_at ? new Date(attendance.checked_in_at) : null;
   const timeFormatted = checkInDate

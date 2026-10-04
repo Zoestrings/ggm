@@ -114,7 +114,7 @@ export default function FailedAttemptsScreen({ route, navigation }) {
 
   const renderItem = ({ item }) => {
     const isExpanded = expandedId === item.id;
-    const memberName = item.user?.name || 'Unknown Musician';
+    const memberName = item.user?.name || 'Former member';
     const timeFormatted = item.attempted_at
       ? new Date(item.attempted_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       : 'N/A';

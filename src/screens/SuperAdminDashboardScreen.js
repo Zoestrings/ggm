@@ -302,7 +302,7 @@ export default function SuperAdminDashboardScreen({ navigation }) {
                     <Ionicons name="person" size={12} color="#FFFFFF" />
                   </View>
                   <Text style={styles.previewName} numberOfLines={1}>
-                    {item.user?.name || 'Musician'}
+                    {item.user?.name || 'Former member'}
                   </Text>
                   <Text style={styles.previewTime}>
                     {item.checked_in_at

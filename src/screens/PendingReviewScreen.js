@@ -54,7 +54,7 @@ export default function PendingReviewScreen({ navigation }) {
 
         const enriched = data.map((d) => ({
           ...d,
-          user: userMap[d.member_id] || { name: 'Unknown Musician' },
+          user: userMap[d.member_id] || { name: 'Former member' },
         }));
 
         setPendingList(enriched);
@@ -179,7 +179,7 @@ export default function PendingReviewScreen({ navigation }) {
   };
 
   const renderItem = ({ item }) => {
-    const memberName = item.user?.name || 'Musician';
+    const memberName = item.user?.name || 'Former member';
     const instrument = item.user?.instrument || 'Instrumentalist';
     const selfieUrl = signedUrls[item.id];
     const capturedDate = item.captured_at

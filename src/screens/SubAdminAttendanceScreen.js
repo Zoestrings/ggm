@@ -134,7 +134,7 @@ export default function SubAdminAttendanceScreen({ navigation, route }) {
     : 'Today';
 
   const renderAttendanceRow = ({ item, index }) => {
-    const memberName = item.user?.name || 'Musician';
+    const memberName = item.user?.name || 'Former member';
     const instrument = item.user?.instrument || 'Instrumentalist';
     const timeFormatted = item.checked_in_at
       ? new Date(item.checked_in_at).toLocaleTimeString([], {
