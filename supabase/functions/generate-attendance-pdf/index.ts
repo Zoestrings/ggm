@@ -333,7 +333,7 @@ serve(async (req) => {
           font: fontBold,
           color: COLOR_GREEN,
         });
-        page.drawText(`Geofence: Church HQ (${activity.geofence_radius_m || 150}m Radius)`, {
+        page.drawText(`Geofence: Church HQ (${activity.geofence_radius_m || 200}m Radius)`, {
           x: statsX,
           y: y - 44,
           size: 8,

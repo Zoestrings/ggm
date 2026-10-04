@@ -15,44 +15,78 @@ import { supabase } from '../lib/supabase';
 import { colors, spacing } from '../theme';
 
 export default function AttendanceDetailScreen({ route, navigation }) {
-  const { record, activity } = route.params || {};
-  const [signedImageUrl, setSignedImageUrl] = useState(null);
-  const [loadingImage, setLoadingImage] = useState(true);
+  const { record, activity, attendanceId: paramAttendanceId } = route.params || {};
+  const attendanceId = paramAttendanceId || record?.id;
+  const [attendance, setAttendance] = useState(record || null);
+  const [signedSelfieUrl, setSignedSelfieUrl] = useState(null);
+  const [photoError, setPhotoError] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadingPhoto, setLoadingPhoto] = useState(true);
 
   useEffect(() => {
-    fetchSignedSelfieUrl();
+    loadAttendanceRecord();
   }, []);
 
-  const fetchSignedSelfieUrl = async () => {
-    if (!record?.selfie_url) {
-      setLoadingImage(false);
-      return;
-    }
-
+  const loadAttendanceRecord = async () => {
     try {
-      const { data, error } = await supabase.storage
-        .from('selfies')
-        .createSignedUrl(record.selfie_url, 3600);
+      let currentRecord = attendance;
+      if (attendanceId) {
+        const { data, error } = await supabase
+          .from('attendance')
+          .select(`
+            id,
+            member_id,
+            checked_in_at,
+            lat,
+            lng,
+            accuracy_m,
+            selfie_url,
+            check_in_method,
+            verification_status,
+            activity_id,
+            users:member_id (id, name, phone, email, instrument)
+          `)
+          .eq('id', attendanceId)
+          .single();
 
-      if (error) {
-        console.warn('Error creating signed URL:', error.message);
-      } else if (data?.signedUrl) {
-        setSignedImageUrl(data.signedUrl);
+        if (!error && data) {
+          currentRecord = data;
+          setAttendance(data);
+        } else if (error) {
+          console.warn('Error fetching attendance with users join:', error.message);
+        }
+      }
+
+      // Generate signed URL if selfie exists
+      if (currentRecord?.selfie_url) {
+        const { data: storageData, error: storageError } = await supabase.storage
+          .from('selfies')
+          .createSignedUrl(currentRecord.selfie_url, 3600);
+
+        if (storageError || !storageData?.signedUrl) {
+          setPhotoError(true);
+        } else {
+          setSignedSelfieUrl(storageData.signedUrl);
+        }
+      } else {
+        setSignedSelfieUrl(null);
       }
     } catch (err) {
-      console.error('Signed URL fetch error:', err);
+      console.error('Error loading attendance details:', err);
+      setPhotoError(true);
     } finally {
-      setLoadingImage(false);
+      setLoading(false);
+      setLoadingPhoto(false);
     }
   };
 
-  const user = record?.user || {};
-  const memberName = user.name || 'Instrumentalist';
-  const phone = user.phone || 'Not provided';
-  const email = user.email || 'Not provided';
-  const instrument = user.instrument || 'Musician';
+  const userData = attendance?.users || attendance?.user || {};
+  const memberName = userData?.name || 'Former member';
+  const phone = userData?.phone || 'Not available';
+  const email = userData?.email || 'Not available';
+  const instrument = userData?.instrument || 'Not specified';
 
-  const checkInDate = record?.checked_in_at ? new Date(record.checked_in_at) : null;
+  const checkInDate = attendance?.checked_in_at ? new Date(attendance.checked_in_at) : null;
   const timeFormatted = checkInDate
     ? checkInDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
     : 'N/A';
@@ -94,17 +128,22 @@ export default function AttendanceDetailScreen({ route, navigation }) {
         <View style={styles.card}>
           <Text style={styles.cardSectionTitle}>VERIFICATION SELFIE</Text>
           <View style={styles.imageWrapper}>
-            {loadingImage ? (
+            {loadingPhoto ? (
               <View style={styles.imageLoadingContainer}>
                 <ActivityIndicator size="large" color={colors.primary} />
                 <Text style={styles.imageLoadingText}>Loading verified photo...</Text>
               </View>
-            ) : signedImageUrl ? (
-              <Image source={{ uri: signedImageUrl }} style={styles.selfieImage} resizeMode="cover" />
+            ) : signedSelfieUrl ? (
+              <Image source={{ uri: signedSelfieUrl }} style={styles.selfieImage} resizeMode="cover" />
+            ) : photoError ? (
+              <View style={styles.imagePlaceholder}>
+                <Ionicons name="alert-circle-outline" size={36} color={colors.textLight} />
+                <Text style={styles.placeholderText}>Photo temporarily unavailable. Try again later.</Text>
+              </View>
             ) : (
               <View style={styles.imagePlaceholder}>
                 <Ionicons name="camera-outline" size={36} color={colors.textLight} />
-                <Text style={styles.placeholderText}>Verification photo not found</Text>
+                <Text style={styles.placeholderText}>No verification photo was captured.</Text>
               </View>
             )}
           </View>
@@ -144,7 +183,7 @@ export default function AttendanceDetailScreen({ route, navigation }) {
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Status</Text>
             <View style={styles.statusVerifiedBadge}>
-              <Text style={styles.statusVerifiedText}>● {(record?.verification_status || 'VERIFIED').toUpperCase()}</Text>
+              <Text style={styles.statusVerifiedText}>● {(attendance?.verification_status || 'VERIFIED').toUpperCase()}</Text>
             </View>
           </View>
 
@@ -166,14 +205,14 @@ export default function AttendanceDetailScreen({ route, navigation }) {
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>GPS Coordinates</Text>
             <Text style={styles.detailValueMono}>
-              {record?.lat ? `${record.lat.toFixed(5)}, ${record.lng.toFixed(5)}` : 'N/A'}
+              {attendance?.lat ? `${attendance.lat.toFixed(5)}, ${attendance.lng.toFixed(5)}` : 'N/A'}
             </Text>
           </View>
 
           <View style={[styles.detailRow, { borderBottomWidth: 0 }]}>
             <Text style={styles.detailLabel}>Accuracy</Text>
             <Text style={styles.detailValueMono}>
-              {record?.accuracy_m ? `±${Math.round(record.accuracy_m)} meters` : 'N/A'}
+              {attendance?.accuracy_m ? `±${Math.round(attendance.accuracy_m)} meters` : 'N/A'}
             </Text>
           </View>
         </View>

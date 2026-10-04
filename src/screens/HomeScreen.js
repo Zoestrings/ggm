@@ -349,7 +349,7 @@ export default function HomeScreen({ navigation }) {
               color="#FFFFFF"
               style={{ marginRight: 8 }}
             />
-            <Text style={styles.checkAttendanceButtonText}>CHECK ATTENDANCE</Text>
+            <Text style={styles.checkAttendanceButtonText}>REGISTER ATTENDANCE</Text>
           </TouchableOpacity>
         </View>
 

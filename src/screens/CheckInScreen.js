@@ -10,6 +10,7 @@ import {
   Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useIsFocused } from '@react-navigation/native';
 import * as Location from 'expo-location';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,6 +22,7 @@ import { colors, spacing } from '../theme';
 
 export default function CheckInScreen({ route, navigation }) {
   const { activity } = route.params || {};
+  const isFocused = useIsFocused();
 
   // Verification flow state: 'verifying_location' | 'camera' | 'preview' | 'submitting' | 'success'
   const [step, setStep] = useState('verifying_location');
@@ -29,6 +31,9 @@ export default function CheckInScreen({ route, navigation }) {
   const [userLocation, setUserLocation] = useState(null);
   const [photoUri, setPhotoUri] = useState(null);
   const [checkInTime, setCheckInTime] = useState(null);
+  const [isCameraReady, setIsCameraReady] = useState(false);
+  const [cameraKey, setCameraKey] = useState(0);
+  const [cameraTimedOut, setCameraTimedOut] = useState(false);
 
   // Camera permissions
   const [permission, requestPermission] = useCameraPermissions();
@@ -37,6 +42,25 @@ export default function CheckInScreen({ route, navigation }) {
   useEffect(() => {
     runPreCheck();
   }, []);
+
+  useEffect(() => {
+    let timer;
+    if (step === 'camera' && !isCameraReady) {
+      setCameraTimedOut(false);
+      timer = setTimeout(() => {
+        setCameraTimedOut(true);
+      }, 8000);
+    }
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [step, isCameraReady, cameraKey]);
+
+  const handleRetryCamera = () => {
+    setCameraTimedOut(false);
+    setIsCameraReady(false);
+    setCameraKey((prev) => prev + 1);
+  };
 
   const logAttempt = async (userId, reason, metadata = {}) => {
     try {
@@ -104,18 +128,21 @@ export default function CheckInScreen({ route, navigation }) {
       setStatusMessage('Verifying venue boundaries...');
       const geofenceLat = activity.geofence_lat;
       const geofenceLng = activity.geofence_lng;
-      const geofenceRadius = activity.geofence_radius_m || 150;
-      const maxAccuracy = activity.max_accuracy_m || 80;
+      const geofenceRadius = activity.geofence_radius_m || 200;
+      const maxAccuracy = activity.max_accuracy_m || 200;
 
       if (geofenceLat !== null && geofenceLng !== null && geofenceLat !== undefined) {
         const distance = getDistanceMeters(userLat, userLng, geofenceLat, geofenceLng);
 
-        if (distance > geofenceRadius) {
+        // Reject only if the member is outside the radius by more than their
+        // GPS accuracy allows.
+        if ((distance - geofenceRadius) > accuracy) {
           await logAttempt(user.id, 'outside_geofence', {
             distance: Math.round(distance),
             userLat,
             userLng,
             geofenceRadius,
+            accuracy: Math.round(accuracy),
           });
           Alert.alert(
             'Location Verification Failed',
@@ -129,10 +156,14 @@ export default function CheckInScreen({ route, navigation }) {
           await logAttempt(user.id, 'poor_accuracy', { accuracy: Math.round(accuracy), maxAccuracy });
           Alert.alert(
             'GPS Accuracy Low',
-            `Your GPS accuracy is ±${Math.round(accuracy)}m. Please move to an open area and try again.`,
+            `Your GPS signal is weak (±${Math.round(accuracy)}m). Move near a window or outside, then try again.`,
             [{ text: 'OK', onPress: () => navigation.goBack() }]
           );
           return;
+        }
+
+        if (accuracy > 100) {
+          console.log(`[CheckIn] Accepted with rough accuracy: ${accuracy}m`);
         }
       }
 
@@ -440,46 +471,83 @@ export default function CheckInScreen({ route, navigation }) {
   // 4. Live Camera View
   return (
     <View style={styles.cameraContainer}>
-      <CameraView
-        style={StyleSheet.absoluteFillObject}
-        facing="front"
-        ref={cameraRef}
-      />
-      <SafeAreaView style={[StyleSheet.absoluteFillObject, styles.cameraOverlay]} pointerEvents="box-none">
-        {/* Header Bar */}
-        <View style={styles.cameraTopBar}>
-          <TouchableOpacity
-            style={styles.closeCameraButton}
-            onPress={() => navigation.goBack()}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="close" size={20} color="#FFFFFF" />
-            <Text style={styles.closeCameraText}>Cancel</Text>
-          </TouchableOpacity>
-          <View style={styles.activityBadge}>
-            <Text style={styles.activityBadgeText} numberOfLines={1}>
-              {activity?.name}
-            </Text>
-          </View>
-        </View>
+      {isFocused && (
+        <CameraView
+          key={cameraKey}
+          style={styles.camera}
+          facing="front"
+          ref={cameraRef}
+          onCameraReady={() => {
+            setIsCameraReady(true);
+            setCameraTimedOut(false);
+          }}
+          onMountError={(err) => {
+            console.warn('CameraView mount error:', err);
+          }}
+        >
+          {!isCameraReady && (
+            <View style={styles.cameraLoadingOverlay}>
+              {cameraTimedOut ? (
+                <View style={styles.cameraTimeoutCard}>
+                  <Ionicons name="warning-outline" size={32} color={colors.warning || '#D97706'} />
+                  <Text style={styles.cameraTimeoutTitle}>Camera is taking longer than expected</Text>
+                  <Text style={styles.cameraTimeoutBody}>Try closing other apps, then tap Retry.</Text>
+                  <TouchableOpacity
+                    style={styles.retryCameraButton}
+                    onPress={handleRetryCamera}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.retryCameraButtonText}>Retry</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={styles.cameraPreparingContainer}>
+                  <ActivityIndicator size="large" color="#FFFFFF" />
+                  <Text style={styles.cameraPreparingText}>Preparing camera...</Text>
+                </View>
+              )}
+            </View>
+          )}
 
-        {/* Center Face Frame Guide */}
-        <View style={styles.faceGuideWrapper}>
-          <View style={styles.faceGuide} />
-          <Text style={styles.faceGuideText}>Position your face inside the frame</Text>
-        </View>
+          <SafeAreaView style={styles.cameraOverlay} pointerEvents="box-none">
+            {/* Header Bar */}
+            <View style={styles.cameraTopBar}>
+              <TouchableOpacity
+                style={styles.closeCameraButton}
+                onPress={() => navigation.goBack()}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="close" size={20} color="#FFFFFF" />
+                <Text style={styles.closeCameraText}>Cancel</Text>
+              </TouchableOpacity>
+              <View style={styles.activityBadge}>
+                <Text style={styles.activityBadgeText} numberOfLines={1}>
+                  {activity?.name}
+                </Text>
+              </View>
+            </View>
 
-        {/* Bottom Capture Button */}
-        <View style={styles.captureContainer}>
-          <TouchableOpacity
-            style={styles.captureButtonOuter}
-            onPress={handleCapture}
-            activeOpacity={0.8}
-          >
-            <View style={styles.captureButtonInner} />
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
+            {/* Center Face Frame Guide */}
+            <View style={styles.faceGuideWrapper}>
+              <View style={styles.faceGuide} />
+              <Text style={styles.faceGuideText}>Position your face inside the frame</Text>
+            </View>
+
+            {/* Bottom Capture Button */}
+            {isCameraReady && (
+              <View style={styles.captureContainer}>
+                <TouchableOpacity
+                  style={styles.captureButtonOuter}
+                  onPress={handleCapture}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.captureButtonInner} />
+                </TouchableOpacity>
+              </View>
+            )}
+          </SafeAreaView>
+        </CameraView>
+      )}
     </View>
   );
 }
@@ -492,6 +560,59 @@ const styles = StyleSheet.create({
   cameraContainer: {
     flex: 1,
     backgroundColor: '#000000',
+  },
+  camera: {
+    flex: 1,
+  },
+  cameraLoadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#000000',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+    padding: 24,
+  },
+  cameraPreparingContainer: {
+    alignItems: 'center',
+  },
+  cameraPreparingText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+    marginTop: 14,
+  },
+  cameraTimeoutCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 24,
+    alignItems: 'center',
+    width: '100%',
+    maxWidth: 320,
+  },
+  cameraTimeoutTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginTop: 10,
+    textAlign: 'center',
+  },
+  cameraTimeoutBody: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginTop: 6,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  retryCameraButton: {
+    backgroundColor: colors.primary,
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+  },
+  retryCameraButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
   },
   watermark: {
     position: 'absolute',
