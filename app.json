@@ -42,6 +42,12 @@
       ],
       "expo-sharing"
     ],
+    "updates": {
+      "url": "https://u.expo.dev/62669f1f-9cc4-4c88-81ac-d60a99d7f8eb"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "extra": {
       "eas": {
         "projectId": "62669f1f-9cc4-4c88-81ac-d60a99d7f8eb"
