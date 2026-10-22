@@ -287,14 +287,12 @@ export default function HomeScreen({ navigation, route }) {
           {/* Top Bar: Clean White Rounded Square Logo Box & Notification Bell */}
           <View style={styles.headerTopBar}>
             <View style={styles.headerLeft}>
-              {/* Logo in Perfect White Circle */}
-              <View style={styles.headerLogoCircle}>
-                <Image
-                  source={require('../../assets/logo.png')}
-                  style={styles.headerLogo}
-                  resizeMode="contain"
-                />
-              </View>
+              {/* Logo directly on Navy Background */}
+              <Image
+                source={require('../../assets/logo.png')}
+                style={styles.headerLogoDirect}
+                resizeMode="contain"
+              />
               <View style={styles.headerBrandTexts}>
                 <Text style={styles.headerBrandTitle}>GGM Instrumentalists</Text>
                 <Text style={styles.headerBrandSubtitle}>God's Ministry Inc.</Text>
@@ -492,26 +490,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  // Clean White Perfect Circle Logo Container
-  headerLogoCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 100, // Perfect circle with NO borders
-    backgroundColor: '#FFFFFF',
-    padding: 5,
-    justifyContent: 'center',
-    alignItems: 'center',
+  // Logo directly on Navy Background
+  headerLogoDirect: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     marginRight: 12,
-    overflow: 'hidden',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  headerLogo: {
-    width: '100%',
-    height: '100%',
   },
   headerBrandTexts: {
     justifyContent: 'center',

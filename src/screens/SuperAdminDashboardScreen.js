@@ -340,14 +340,12 @@ export default function SuperAdminDashboardScreen({ navigation }) {
 
           {/* Profile Row: Large Circular Logo Container + Details */}
           <View style={styles.profileRow}>
-            {/* Pure Circle Logo Container (No gold ring) */}
-            <View style={styles.profileLogoCircle}>
-              <Image
-                source={require('../../assets/logo.png')}
-                style={styles.profileLogo}
-                resizeMode="contain"
-              />
-            </View>
+            {/* Logo directly on Navy Background */}
+            <Image
+              source={require('../../assets/logo.png')}
+              style={styles.profileLogoDirect}
+              resizeMode="contain"
+            />
 
             <View style={styles.profileDetailsCol}>
               <Text style={styles.brandTitle}>GGM Instrumentalists</Text>
@@ -625,21 +623,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 18,
   },
-  profileLogoCircle: {
-    width: 58,
-    height: 58,
-    borderRadius: 100, // Pure circle (No gold ring)
-    backgroundColor: '#FFFFFF',
-    padding: 5,
-    justifyContent: 'center',
-    alignItems: 'center',
+  profileLogoDirect: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
     marginRight: 14,
-    overflow: 'hidden',
-    ...shadows.card,
-  },
-  profileLogo: {
-    width: '100%',
-    height: '100%',
   },
   profileDetailsCol: {
     flex: 1,
