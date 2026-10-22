@@ -21,7 +21,7 @@ import { fonts, shadows } from '../theme';
 
 const PROFILE_CACHE_KEY = '@ggm_user_profile';
 
-export default function HomeScreen({ navigation }) {
+export default function HomeScreen({ navigation, route }) {
   const [user, setUser] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
   const [loadingUser, setLoadingUser] = useState(true);
@@ -95,8 +95,14 @@ export default function HomeScreen({ navigation }) {
               const finalProfile = { ...profile, role: effectiveRole };
               setUserProfile(finalProfile);
               await AsyncStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(finalProfile));
+
+              if (effectiveRole === 'super_admin' && !route?.params?.isMemberView) {
+                navigation.replace('SuperAdminDashboard');
+                return;
+              }
             } else {
               const meta = currentUser.user_metadata || {};
+              const healedRole = meta.role || (isKnownSuperAdmin ? 'super_admin' : 'member');
               const healedProfile = {
                 id: currentUser.id,
                 name: meta.full_name || meta.name || currentUser.email?.split('@')[0] || 'Member',
@@ -104,11 +110,16 @@ export default function HomeScreen({ navigation }) {
                 instrument: (meta.instrument && meta.instrument !== 'Musician')
                   ? meta.instrument
                   : ((profile?.instrument && profile.instrument !== 'Musician') ? profile.instrument : 'Keyboard'),
-                role: meta.role || (isKnownSuperAdmin ? 'super_admin' : 'member'),
+                role: healedRole,
                 password_hash: 'managed_by_supabase_auth',
               };
               setUserProfile(healedProfile);
               await AsyncStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(healedProfile));
+
+              if (healedRole === 'super_admin' && !route?.params?.isMemberView) {
+                navigation.replace('SuperAdminDashboard');
+                return;
+              }
 
               try {
                 await supabase.from('users').upsert(healedProfile, { onConflict: 'id' });
@@ -390,29 +401,6 @@ export default function HomeScreen({ navigation }) {
           </View>
         </View>
 
-        {/* 6. Super Admin Portal Access Card (Visible for Super Admin) */}
-        {isSuperAdmin && (
-          <TouchableOpacity
-            style={styles.adminPortalCard}
-            onPress={navigateToAdmin}
-            activeOpacity={0.88}
-          >
-            <View style={styles.adminPortalLeft}>
-              <View style={styles.adminPortalIconWrapper}>
-                <Ionicons name="shield-checkmark" size={24} color="#D4AF37" />
-              </View>
-              <View style={styles.adminPortalTextWrapper}>
-                <Text style={styles.adminPortalTitle}>Super Admin Dashboard</Text>
-                <Text style={styles.adminPortalSubtitle}>
-                  Attendance records, reports, directory & logs
-                </Text>
-              </View>
-            </View>
-            <View style={styles.adminPortalArrowBadge}>
-              <Ionicons name="chevron-forward" size={18} color="#D4AF37" />
-            </View>
-          </TouchableOpacity>
-        )}
 
         {/* 7. Footer Spiritual Quote with Gold Lines & Ministry Subtitle */}
         <View style={styles.footerContainer}>

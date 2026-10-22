@@ -363,7 +363,7 @@ export default function SuperAdminDashboardScreen({ navigation }) {
             {/* Switch to Member View */}
             <TouchableOpacity
               style={styles.memberViewButton}
-              onPress={() => navigation.navigate('Home')}
+              onPress={() => navigation.navigate('Home', { isMemberView: true, screen: 'HomeScreen', params: { isMemberView: true } })}
               activeOpacity={0.8}
             >
               <Text style={styles.memberViewButtonText}>Member View</Text>

@@ -140,18 +140,47 @@ export default function App() {
   });
 
   const [session, setSession] = useState(null);
+  const [userRole, setUserRole] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const checkRole = async (user) => {
+      if (!user) return null;
+      if (user.email?.toLowerCase() === 'akpodomagoodluck9@gmail.com') {
+        return 'super_admin';
+      }
+      try {
+        const { data: profile } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+        if (profile?.role) {
+          return profile.role;
+        }
+      } catch (_e) {}
+      return user.user_metadata?.role || 'member';
+    };
+
     // Check initial auth state
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
+      if (session?.user) {
+        const role = await checkRole(session.user);
+        setUserRole(role);
+      }
       setLoading(false);
     });
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
+      if (session?.user) {
+        const role = await checkRole(session.user);
+        setUserRole(role);
+      } else {
+        setUserRole(null);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -169,12 +198,16 @@ export default function App() {
     );
   }
 
+  const isSuperAdmin = userRole === 'super_admin';
+  const initialRoute = !session ? 'Login' : (isSuperAdmin ? 'SuperAdminDashboard' : 'Home');
+
   return (
     <View style={styles.appContainer}>
       <NavigationContainer>
         <StatusBar style="dark" />
         <Stack.Navigator
-          initialRouteName={session ? "Home" : "Login"}
+          key={userRole || (session ? 'logged_in' : 'logged_out')}
+          initialRouteName={initialRoute}
           screenOptions={{
             headerShown: false,
             cardStyle: { backgroundColor: '#FFFFFF' },

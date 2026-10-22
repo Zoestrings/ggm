@@ -85,7 +85,16 @@ export default function LoginScreen({ navigation }) {
         }
       }
 
-      navigation.replace('Home');
+      // Check user role to navigate directly to SuperAdminDashboard or Home
+      const isKnownSuperAdmin = data.user?.email?.toLowerCase() === 'akpodomagoodluck9@gmail.com';
+      let userRole = profile?.role || data.user?.user_metadata?.role;
+      if (!userRole && isKnownSuperAdmin) userRole = 'super_admin';
+
+      if (userRole === 'super_admin') {
+        navigation.replace('SuperAdminDashboard');
+      } else {
+        navigation.replace('Home');
+      }
     } catch (error) {
       Alert.alert(
         'Authentication Failed',
