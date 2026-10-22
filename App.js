@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, View, StyleSheet, Image } from 'react-native';
+import { ActivityIndicator, View, StyleSheet, Image, Platform } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -58,20 +58,39 @@ function MainTabs() {
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
+        tabBarBackground: () => (
+          <View style={{ flex: 1, backgroundColor: '#173B70' }} />
+        ),
         tabBarStyle: {
-          backgroundColor: '#173B70', // Rich Solid Navy (#173B70)
-          borderTopWidth: 2,
+          backgroundColor: '#173B70', // Solid Navy (#173B70)
+          borderTopWidth: 1.5,
           borderTopColor: '#D4AF37', // Crisp Gold Top Border
-          height: 66,
-          paddingBottom: 8,
-          paddingTop: 6,
+          height: Platform.OS === 'ios' ? 88 : 68,
+          paddingTop: 8,
+          paddingBottom: Platform.OS === 'ios' ? 24 : 8,
+          elevation: 10,
+          shadowColor: '#000000',
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.12,
+          shadowRadius: 4,
+        },
+        tabBarItemStyle: {
+          justifyContent: 'center',
+          alignItems: 'center',
+          flexDirection: 'column',
+          paddingVertical: 2,
+        },
+        tabBarIconStyle: {
+          marginTop: 2,
+          marginBottom: 2,
         },
         tabBarActiveTintColor: '#D4AF37', // Active Gold
         tabBarInactiveTintColor: '#94A3B8', // Inactive Silver/Gray
         tabBarLabelStyle: {
           fontSize: 11,
           fontFamily: 'Inter_600SemiBold',
-          marginTop: 2,
+          marginTop: 1,
+          marginBottom: 2,
         },
       }}
     >

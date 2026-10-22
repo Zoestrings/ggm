@@ -460,17 +460,16 @@ const styles = StyleSheet.create({
   headerLogoCircle: {
     width: 48,
     height: 48,
-    borderRadius: 24, // Perfect circle (No square edges)
+    borderRadius: 100, // Perfect circle with NO borders
     backgroundColor: '#FFFFFF',
-    padding: 4,
+    padding: 5,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
-    borderWidth: 1.5,
-    borderColor: '#D4AF37', // Gold trim
+    overflow: 'hidden',
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
+    shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
   },
@@ -555,7 +554,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 20,
-    paddingBottom: 30,
+    paddingBottom: 90, // Generous clearance for docked bottom tab bar
   },
 
   // 2. Giant Button & Pill Button
