@@ -62,9 +62,9 @@ function MainTabs() {
           backgroundColor: '#173B70', // Rich Solid Navy (#173B70)
           borderTopWidth: 2,
           borderTopColor: '#D4AF37', // Crisp Gold Top Border
-          height: 64,
+          height: 66,
           paddingBottom: 8,
-          paddingTop: 8,
+          paddingTop: 6,
         },
         tabBarActiveTintColor: '#D4AF37', // Active Gold
         tabBarInactiveTintColor: '#94A3B8', // Inactive Silver/Gray
@@ -81,21 +81,7 @@ function MainTabs() {
         options={{
           tabBarLabel: 'Home',
           tabBarIcon: ({ color, focused }) => (
-            <View style={{ alignItems: 'center' }}>
-              <Ionicons name={focused ? 'home' : 'home-outline'} size={22} color={color} />
-              {focused && (
-                <View
-                  style={{
-                    position: 'absolute',
-                    bottom: -6,
-                    width: 24,
-                    height: 3,
-                    backgroundColor: '#D4AF37',
-                    borderRadius: 1.5,
-                  }}
-                />
-              )}
-            </View>
+            <Ionicons name={focused ? 'home' : 'home-outline'} size={24} color={color} />
           ),
         }}
       />
@@ -105,21 +91,7 @@ function MainTabs() {
         options={{
           tabBarLabel: 'History',
           tabBarIcon: ({ color, focused }) => (
-            <View style={{ alignItems: 'center' }}>
-              <Ionicons name={focused ? 'time' : 'time-outline'} size={22} color={color} />
-              {focused && (
-                <View
-                  style={{
-                    position: 'absolute',
-                    bottom: -6,
-                    width: 24,
-                    height: 3,
-                    backgroundColor: '#D4AF37',
-                    borderRadius: 1.5,
-                  }}
-                />
-              )}
-            </View>
+            <Ionicons name={focused ? 'time' : 'time-outline'} size={24} color={color} />
           ),
         }}
       />
@@ -129,21 +101,7 @@ function MainTabs() {
         options={{
           tabBarLabel: 'Profile',
           tabBarIcon: ({ color, focused }) => (
-            <View style={{ alignItems: 'center' }}>
-              <Ionicons name={focused ? 'person' : 'person-outline'} size={22} color={color} />
-              {focused && (
-                <View
-                  style={{
-                    position: 'absolute',
-                    bottom: -6,
-                    width: 24,
-                    height: 3,
-                    backgroundColor: '#D4AF37',
-                    borderRadius: 1.5,
-                  }}
-                />
-              )}
-            </View>
+            <Ionicons name={focused ? 'person' : 'person-outline'} size={24} color={color} />
           ),
         }}
       />

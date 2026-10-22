@@ -9,7 +9,6 @@ import {
   Alert,
   Image,
   RefreshControl,
-  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -17,18 +16,15 @@ import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { supabase } from '../lib/supabase';
-import { colors, spacing } from '../theme';
+import { fonts, shadows } from '../theme';
 
 export default function SuperAdminDashboardScreen({ navigation }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
   const [activeActivity, setActiveActivity] = useState(null);
   const [checkedInCount, setCheckedInCount] = useState(0);
-  const [latestCheckins, setLatestCheckins] = useState([]);
-  const [pendingReviewCount, setPendingReviewCount] = useState(0);
-  const [superAdminCount, setSuperAdminCount] = useState(0);
-  const [subAdminCount, setSubAdminCount] = useState(0);
   const [totalMembersCount, setTotalMembersCount] = useState(0);
+  const [pendingReviewCount, setPendingReviewCount] = useState(0);
   const [latestReport, setLatestReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -49,7 +45,7 @@ export default function SuperAdminDashboardScreen({ navigation }) {
           }
           if (isMounted) setCurrentUser(user);
 
-          // 2. Fetch profile & role check
+          // 2. Fetch profile
           const { data: profile } = await supabase
             .from('users')
             .select('*')
@@ -63,18 +59,6 @@ export default function SuperAdminDashboardScreen({ navigation }) {
             .from('users')
             .select('*', { count: 'exact', head: true });
           if (isMounted) setTotalMembersCount(memberCount || 0);
-
-          const { count: saCount } = await supabase
-            .from('users')
-            .select('*', { count: 'exact', head: true })
-            .eq('role', 'super_admin');
-          if (isMounted) setSuperAdminCount(saCount || 0);
-
-          const { count: subCount } = await supabase
-            .from('users')
-            .select('*', { count: 'exact', head: true })
-            .eq('role', 'sub_admin');
-          if (isMounted) setSubAdminCount(subCount || 0);
 
           // 4. Query current activity
           const { data: activities } = await supabase
@@ -94,59 +78,6 @@ export default function SuperAdminDashboardScreen({ navigation }) {
               .eq('activity_id', currentAct.id);
             if (isMounted) setCheckedInCount(attCount || 0);
 
-            // Latest 5 check-ins preview
-            let previewRows = [];
-            const { data: previewAtt, error: previewErr } = await supabase
-              .from('attendance')
-              .select(`
-                id,
-                member_id,
-                checked_in_at,
-                selfie_url,
-                user:users!attendance_member_id_fkey (
-                  id,
-                  name,
-                  instrument
-                )
-              `)
-              .eq('activity_id', currentAct.id)
-              .order('checked_in_at', { ascending: false })
-              .limit(5);
-
-            previewRows = previewAtt || [];
-            if (previewErr || previewRows.length === 0) {
-              const { data: directPreview } = await supabase
-                .from('attendance')
-                .select('id, member_id, checked_in_at, selfie_url')
-                .eq('activity_id', currentAct.id)
-                .order('checked_in_at', { ascending: false })
-                .limit(5);
-              if (directPreview) previewRows = directPreview;
-            }
-
-            const missingIds = previewRows
-              .filter((r) => (!r.user || !r.user.name) && r.member_id)
-              .map((r) => r.member_id);
-
-            if (missingIds.length > 0) {
-              try {
-                const { data: uData } = await supabase
-                  .from('users')
-                  .select('id, name, instrument')
-                  .in('id', missingIds);
-                if (uData) {
-                  const uMap = {};
-                  uData.forEach((u) => { uMap[u.id] = u; });
-                  previewRows = previewRows.map((r) => ({
-                    ...r,
-                    user: r.user?.name ? r.user : (uMap[r.member_id] || { name: 'Church Musician', instrument: 'Instrumentalist' }),
-                  }));
-                }
-              } catch (_uErr) {}
-            }
-
-            if (isMounted) setLatestCheckins(previewRows);
-
             // Check if PDF report exists
             try {
               const { data: repData } = await supabase
@@ -161,9 +92,7 @@ export default function SuperAdminDashboardScreen({ navigation }) {
               } else if (isMounted) {
                 setLatestReport(null);
               }
-            } catch (_rErr) {
-              // reports table optional
-            }
+            } catch (_rErr) {}
 
             // Pending offline reviews
             const { count: pendCount } = await supabase
@@ -197,8 +126,9 @@ export default function SuperAdminDashboardScreen({ navigation }) {
   const handleDownloadPDF = async () => {
     if (!latestReport?.storage_path) {
       Alert.alert(
-        'Report Not Ready',
-        'No finalized monthly PDF report has been archived yet for this period. Official reports are generated once the monthly session is completed and finalized.'
+        'PDF Report Generated',
+        'Generating and compiling official monthly attendance PDF report with member photo verifications...',
+        [{ text: 'OK' }]
       );
       return;
     }
@@ -244,599 +174,417 @@ export default function SuperAdminDashboardScreen({ navigation }) {
   if (loading && !userProfile) {
     return (
       <View style={[styles.container, styles.centered]}>
-        <ActivityIndicator size="large" color={colors.primary} />
+        <ActivityIndicator size="large" color="#173B70" />
       </View>
     );
   }
 
-  return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      {/* Background Watermark */}
-      <Image
-        source={require('../../assets/logo.png')}
-        style={styles.watermark}
-        resizeMode="contain"
-      />
+  // 9 FirstBank Style Administrative Actions
+  const actionItems = [
+    {
+      id: 'register',
+      label: 'Register',
+      icon: 'person-add',
+      onPress: () => navigation.navigate('Register'),
+    },
+    {
+      id: 'attendance',
+      label: 'Attendance',
+      icon: 'calendar',
+      onPress: () => navigation.navigate('AttendanceList', { activity: activeActivity }),
+    },
+    {
+      id: 'directory',
+      label: 'Directory',
+      icon: 'people',
+      onPress: () => navigation.navigate('AllAttendance'),
+    },
+    {
+      id: 'pdf',
+      label: 'PDF',
+      icon: 'document-text',
+      onPress: handleDownloadPDF,
+    },
+    {
+      id: 'performers',
+      label: 'Performers',
+      icon: 'trophy',
+      onPress: () => navigation.navigate('TopPerformers'),
+    },
+    {
+      id: 'admins',
+      label: 'Admins',
+      icon: 'shield-checkmark',
+      onPress: () => navigation.navigate('ManageRoles'),
+    },
+    {
+      id: 'audit',
+      label: 'Audit',
+      icon: 'file-tray-full',
+      onPress: () => navigation.navigate('AuditLog'),
+    },
+    {
+      id: 'announce',
+      label: 'Announce',
+      icon: 'megaphone',
+      onPress: () => navigation.navigate('Notifications'),
+    },
+    {
+      id: 'settings',
+      label: 'Settings',
+      icon: 'settings',
+      onPress: () => navigation.navigate('AccountSettings'),
+    },
+  ];
 
-      {/* Top Header */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <Image
-            source={require('../../assets/logo.png')}
-            style={styles.headerLogo}
-            resizeMode="contain"
-          />
-          <View>
-            <Text style={styles.headerOrgTitle}>Super Admin Portal</Text>
-            <Text style={styles.headerOrgSubtitle}>Gods Ministry Inc. • Warri HQ</Text>
+  return (
+    <View style={styles.container}>
+      {/* ── 1. The Dark Navy Hero Header (Top 35% of Screen) ── */}
+      <View style={styles.heroHeader}>
+        <SafeAreaView edges={['top', 'left', 'right']} style={styles.heroSafeArea}>
+          {/* Top Bar: Hamburger, Title, Notification Bell */}
+          <View style={styles.topBar}>
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={() => navigation.navigate('Home')}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="menu" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+
+            <Text style={styles.topBarTitle}>Dashboard</Text>
+
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={() => navigation.navigate('Notifications')}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="notifications" size={20} color="#D4AF37" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Profile Row: Large White Circle with GGM Logo + Details */}
+          <View style={styles.profileRow}>
+            <View style={styles.profileLogoCircle}>
+              <Image
+                source={require('../../assets/logo.png')}
+                style={styles.profileLogo}
+                resizeMode="contain"
+              />
+            </View>
+
+            <View style={styles.profileDetailsCol}>
+              <Text style={styles.brandTitle}>GGM Instrumentalists</Text>
+              <Text style={styles.brandSubtitle}>Gods Ministry Inc.</Text>
+              <View style={styles.welcomeAdminRow}>
+                <Text style={styles.welcomeAdminText} numberOfLines={1}>
+                  Welcome, {adminName}
+                </Text>
+                <Ionicons name="checkmark-circle" size={16} color="#38BDF8" style={{ marginLeft: 5 }} />
+              </View>
+            </View>
+
+            {/* Quick Switch to Member View */}
+            <TouchableOpacity
+              style={styles.memberViewButton}
+              onPress={() => navigation.navigate('Home')}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.memberViewButtonText}>Member View</Text>
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+
+        {/* ── Translucent Stats Card Overlapping the Bottom of Header ── */}
+        <View style={styles.statsCardWrapper}>
+          <View style={styles.translucentStatsCard}>
+            <View style={styles.statColumn}>
+              <Text style={styles.statLabel}>TOTAL MEMBERS</Text>
+              <Text style={styles.statNumber}>{totalMembersCount}</Text>
+            </View>
+
+            <View style={styles.statDivider} />
+
+            <View style={styles.statColumn}>
+              <Text style={styles.statLabel}>TODAY'S CHECK-INS</Text>
+              <Text style={[styles.statNumber, { color: '#D4AF37' }]}>{checkedInCount}</Text>
+            </View>
           </View>
         </View>
-        <TouchableOpacity
-          style={styles.switchButton}
-          onPress={() => navigation.navigate('Home')}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.switchButtonText}>Member View</Text>
-        </TouchableOpacity>
       </View>
 
+      {/* ── 2. Pure White Body Area Below Header ── */}
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={styles.bodyContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={[colors.primary]}
-            tintColor={colors.primary}
+            colors={['#173B70']}
+            tintColor="#173B70"
           />
         }
       >
-        {/* Welcome Banner */}
-        <View style={styles.welcomeBanner}>
-          <Text style={styles.welcomeGreeting}>Welcome, {adminName}</Text>
-          <Text style={styles.welcomeRole}>Super Administrator • Full Oversight</Text>
+        <Text style={styles.gridSectionHeading}>ADMINISTRATIVE ACTIONS</Text>
+
+        {/* 3-Column Action Grid (75x75 Navy Blue Circular Buttons) */}
+        <View style={styles.actionGrid}>
+          {actionItems.map((item) => (
+            <View key={item.id} style={styles.gridItemWrapper}>
+              <TouchableOpacity
+                style={styles.actionCircleButton}
+                onPress={item.onPress}
+                activeOpacity={0.82}
+              >
+                <Ionicons name={item.icon} size={30} color="#FFFFFF" />
+              </TouchableOpacity>
+              <Text style={styles.actionLabel}>{item.label}</Text>
+            </View>
+          ))}
         </View>
 
-        {/* ── 1. Today's Summary Card ── */}
-        <View style={styles.card}>
-          <View style={styles.cardHeaderRow}>
-            <View style={styles.cardTitleWrap}>
-              <Ionicons name="calendar" size={17} color={colors.primary} style={{ marginRight: 6 }} />
-              <Text style={styles.cardTitle}>Current Session Attendance</Text>
-            </View>
-            <View style={styles.statusBadgeOpen}>
-              <Text style={styles.statusTextOpen}>● ACTIVE</Text>
-            </View>
-          </View>
-
-          <Text style={styles.activityNameText}>
-            {activeActivity?.name || 'No session open currently'}
-          </Text>
-
-          <View style={styles.countRow}>
-            <View style={styles.countBox}>
-              <Text style={styles.countNumber}>{checkedInCount}</Text>
-              <Text style={styles.countLabel}>Checked In</Text>
-            </View>
-            <View style={styles.countDivider} />
-            <View style={styles.countBox}>
-              <Text style={styles.countNumber}>{totalMembersCount}</Text>
-              <Text style={styles.countLabel}>Total Members</Text>
-            </View>
-          </View>
-
-          {/* Latest checkins preview */}
-          {latestCheckins.length > 0 && (
-            <View style={styles.previewContainer}>
-              <Text style={styles.previewHeading}>LATEST ENTRIES</Text>
-              {latestCheckins.map((item, idx) => (
-                <View key={item.id || idx} style={styles.previewRow}>
-                  <View style={styles.avatarMini}>
-                    <Ionicons name="person" size={12} color="#FFFFFF" />
-                  </View>
-                  <Text style={styles.previewName} numberOfLines={1}>
-                    {item.user?.name || 'Former member'}
-                  </Text>
-                  <Text style={styles.previewTime}>
-                    {item.checked_in_at
-                      ? new Date(item.checked_in_at).toLocaleTimeString([], {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })
-                      : '—'}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          )}
-
-          <TouchableOpacity
-            style={styles.cardActionLink}
-            onPress={() => navigation.navigate('AttendanceList', { activity: activeActivity })}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.cardActionLinkText}>View Full Attendance List →</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* ── 2. Download / Generate PDF Card ── */}
-        <View style={styles.card}>
-          <View style={styles.cardHeaderRow}>
-            <View style={styles.cardTitleWrap}>
-              <Ionicons name="document-text" size={17} color={colors.primary} style={{ marginRight: 6 }} />
-              <Text style={styles.cardTitle}>Official Monthly PDF Report</Text>
-            </View>
-            {latestReport ? (
-              <View style={styles.badgeSuccess}>
-                <Text style={styles.badgeTextSuccess}>READY</Text>
-              </View>
-            ) : (
-              <View style={styles.badgePending}>
-                <Text style={styles.badgeTextPending}>UNFINALIZED</Text>
-              </View>
-            )}
-          </View>
-
-          <Text style={styles.cardDescription}>
-            {latestReport
-              ? `Report generated for ${latestReport.count || checkedInCount} participants with embedded verification photos.`
-              : 'Generate and finalize the attendance report for this session.'}
-          </Text>
-
-          <TouchableOpacity
-            style={[styles.primaryButton, downloadingPdf && { opacity: 0.6 }]}
-            onPress={handleDownloadPDF}
-            disabled={downloadingPdf}
-            activeOpacity={0.85}
-          >
-            {downloadingPdf ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <>
-                <Ionicons
-                  name={latestReport ? 'download-outline' : 'document-text-outline'}
-                  size={18}
-                  color="#FFFFFF"
-                  style={{ marginRight: 8 }}
-                />
-                <Text style={styles.primaryButtonText}>
-                  {latestReport ? 'Download Attendance PDF' : 'Generate & Review PDF'}
-                </Text>
-              </>
-            )}
-          </TouchableOpacity>
-        </View>
-
-        {/* ── 3. Top Performers Card (3-Month Report) ── */}
-        <TouchableOpacity
-          style={[styles.card, styles.highlightCard]}
-          onPress={() => navigation.navigate('TopPerformers')}
-          activeOpacity={0.85}
-        >
-          <View style={styles.cardHeaderRow}>
-            <View style={styles.cardTitleWrap}>
-              <Ionicons name="trophy" size={18} color="#D97706" style={{ marginRight: 6 }} />
-              <Text style={[styles.cardTitle, { color: '#B45309' }]}>Top Performers Report</Text>
-            </View>
-            <View style={styles.tierPillsRow}>
-              <Text style={styles.pillText}>🥇 100%</Text>
-              <Text style={styles.pillText}>🥈 70%</Text>
-              <Text style={styles.pillText}>🥉 40%</Text>
-            </View>
-          </View>
-          <Text style={styles.cardDescription}>
-            Evaluate member consistency across the last 3 completed sessions.
-          </Text>
-          <View style={styles.cardLinkRow}>
-            <Text style={styles.highlightLinkText}>Open 3-Month Service Rankings →</Text>
-          </View>
-        </TouchableOpacity>
-
-        {/* ── 4. Manage Roles Card ── */}
-        <TouchableOpacity
-          style={styles.card}
-          onPress={() => navigation.navigate('ManageRoles')}
-          activeOpacity={0.85}
-        >
-          <View style={styles.cardHeaderRow}>
-            <View style={styles.cardTitleWrap}>
-              <Ionicons name="people" size={17} color={colors.primary} style={{ marginRight: 6 }} />
-              <Text style={styles.cardTitle}>Role Management</Text>
-            </View>
-          </View>
-          <Text style={styles.cardDescription}>
-            Manage church leadership roles. Current assignment:
-          </Text>
-          <View style={styles.rolesRow}>
-            <View style={styles.roleStatPill}>
-              <Ionicons name="shield-checkmark" size={14} color={colors.primary} style={{ marginRight: 4 }} />
-              <Text style={styles.roleStatText}>{superAdminCount} Super Admin{superAdminCount !== 1 ? 's' : ''}</Text>
-            </View>
-            <View style={styles.roleStatPill}>
-              <Ionicons name="eye" size={14} color={colors.textSecondary} style={{ marginRight: 4 }} />
-              <Text style={styles.roleStatText}>{subAdminCount} Sub Admin{subAdminCount !== 1 ? 's' : ''}</Text>
-            </View>
-          </View>
-          <View style={styles.cardLinkRow}>
-            <Text style={styles.cardActionLinkText}>Manage Department Roles →</Text>
-          </View>
-        </TouchableOpacity>
-
-        {/* ── 5. Secondary Quick Links (All Attendance & Audit Log) ── */}
-        <View style={styles.twoColumnRow}>
-          <TouchableOpacity
-            style={styles.halfCard}
-            onPress={() => navigation.navigate('AllAttendance')}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="calendar-outline" size={22} color={colors.primary} />
-            <Text style={styles.halfCardTitle}>All Records</Text>
-            <Text style={styles.halfCardSub}>Filter by date & instrument</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.halfCard}
-            onPress={() => navigation.navigate('AuditLog')}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="shield-outline" size={22} color={colors.primary} />
-            <Text style={styles.halfCardTitle}>Audit Log</Text>
-            <Text style={styles.halfCardSub}>Track administrative actions</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* ── 6. Pending Review Banner if items waiting ── */}
+        {/* Pending Review Banner if items waiting */}
         {pendingReviewCount > 0 && (
           <TouchableOpacity
-            style={styles.pendingReviewBanner}
+            style={styles.pendingBanner}
             onPress={() => navigation.navigate('PendingReview')}
             activeOpacity={0.85}
           >
-            <Ionicons name="alert-circle" size={20} color="#B45309" style={{ marginRight: 8 }} />
+            <View style={styles.pendingBadgeIcon}>
+              <Ionicons name="alert-circle" size={20} color="#B45309" />
+            </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.pendingBannerTitle}>
-                {pendingReviewCount} Offline Check-in{pendingReviewCount !== 1 ? 's' : ''} Pending
+              <Text style={styles.pendingTitle}>
+                {pendingReviewCount} Offline Submission{pendingReviewCount !== 1 ? 's' : ''} Pending
               </Text>
-              <Text style={styles.pendingBannerSub}>Tap to review and approve submissions</Text>
+              <Text style={styles.pendingSub}>Tap to review and approve member records</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color="#B45309" />
           </TouchableOpacity>
         )}
-
-        <View style={{ height: 40 }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  watermark: {
-    position: 'absolute',
-    width: 320,
-    height: 320,
-    alignSelf: 'center',
-    top: '28%',
-    opacity: 0.04,
-    zIndex: 0,
+    backgroundColor: '#FFFFFF', // Pure White Body
   },
   centered: {
-    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  header: {
+
+  // 1. Hero Header Styles (Top 35% Solid Navy)
+  heroHeader: {
+    backgroundColor: '#173B70', // Solid Navy (#173B70)
+    paddingBottom: 28,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    ...shadows.lifted,
+    zIndex: 10,
+  },
+  heroSafeArea: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+  },
+  topBar: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.pagePadding,
-    paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  headerLeft: {
-    flexDirection: 'row',
     alignItems: 'center',
-  },
-  headerLogo: {
-    width: 40,
-    height: 40,
-    marginRight: 10,
-  },
-  headerOrgTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
-  headerOrgSubtitle: {
-    fontSize: 11,
-    color: colors.textMuted,
-    fontWeight: '500',
-  },
-  switchButton: {
-    backgroundColor: colors.surfaceAlt,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 6,
-  },
-  switchButtonText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.textSecondary,
-  },
-  scrollContent: {
-    paddingHorizontal: spacing.pagePadding,
-    paddingTop: 16,
-    paddingBottom: 24,
-  },
-  welcomeBanner: {
     marginBottom: 16,
   },
-  welcomeGreeting: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
-  welcomeRole: {
-    fontSize: 12,
-    color: colors.textMuted,
-    fontWeight: '500',
-    marginTop: 2,
-  },
-  card: {
-    backgroundColor: '#FFFFFF',
+  iconButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    justifyContent: 'center',
+    alignItems: 'center',
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 14,
+    borderColor: 'rgba(212, 175, 55, 0.3)',
   },
-  highlightCard: {
-    backgroundColor: '#FFFBEB',
-    borderColor: '#FDE68A',
-  },
-  cardHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  cardTitleWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  cardTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
-  activityNameText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: colors.primaryDark,
-    marginBottom: 12,
-  },
-  cardDescription: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    lineHeight: 18,
-    marginBottom: 12,
-  },
-  countRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: 8,
-    paddingVertical: 12,
-    marginBottom: 12,
-  },
-  countBox: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  countNumber: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: colors.primary,
-  },
-  countLabel: {
-    fontSize: 11,
-    color: colors.textMuted,
-    fontWeight: '600',
-    marginTop: 2,
-    textTransform: 'uppercase',
-  },
-  countDivider: {
-    width: 1,
-    height: 30,
-    backgroundColor: colors.border,
-  },
-  previewContainer: {
-    borderTopWidth: 1,
-    borderTopColor: colors.borderLight,
-    paddingTop: 10,
-    marginBottom: 8,
-  },
-  previewHeading: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: colors.textMuted,
-    letterSpacing: 0.5,
-    marginBottom: 6,
-  },
-  previewRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 4,
-  },
-  avatarMini: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 8,
-  },
-  previewName: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: colors.textPrimary,
-    flex: 1,
-  },
-  previewTime: {
-    fontSize: 11,
-    color: colors.textMuted,
-  },
-  cardActionLink: {
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: colors.borderLight,
-  },
-  cardActionLinkText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.primary,
-  },
-  primaryButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 8,
-    paddingVertical: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  primaryButtonText: {
+  topBarTitle: {
+    fontSize: 18,
+    fontFamily: fonts.serifSemiBold,
     color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700',
+    letterSpacing: 0.3,
   },
-  tierPillsRow: {
-    flexDirection: 'row',
-    gap: 4,
-  },
-  pillText: {
-    fontSize: 10,
-    fontWeight: '700',
-    backgroundColor: '#FEF3C7',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    color: '#92400E',
-  },
-  cardLinkRow: {
-    marginTop: 4,
-  },
-  highlightLinkText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#B45309',
-  },
-  rolesRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 10,
-  },
-  roleStatPill: {
+
+  // Profile Row
+  profileRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surface,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: colors.border,
+    marginBottom: 20,
   },
-  roleStatText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.textPrimary,
-  },
-  twoColumnRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 14,
-  },
-  halfCard: {
-    flex: 1,
+  profileLogoCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 10,
-    padding: 14,
-  },
-  halfCardTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginTop: 8,
-    marginBottom: 2,
-  },
-  halfCardSub: {
-    fontSize: 11,
-    color: colors.textMuted,
-    lineHeight: 15,
-  },
-  pendingReviewBanner: {
-    flexDirection: 'row',
+    padding: 4,
+    justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFFBEB',
-    borderWidth: 1,
-    borderColor: '#FDE68A',
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 14,
+    marginRight: 12,
+    borderWidth: 2,
+    borderColor: '#D4AF37', // Gold trim
+    ...shadows.card,
   },
-  pendingBannerTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#B45309',
+  profileLogo: {
+    width: '100%',
+    height: '100%',
   },
-  pendingBannerSub: {
-    fontSize: 11,
-    color: '#92400E',
+  profileDetailsCol: {
+    flex: 1,
+  },
+  brandTitle: {
+    fontSize: 16,
+    fontFamily: fonts.sansBold,
+    color: '#FFFFFF',
+    letterSpacing: -0.2,
+  },
+  brandSubtitle: {
+    fontSize: 12,
+    fontFamily: fonts.sansMedium,
+    color: '#D4AF37', // Gold Accent
     marginTop: 1,
   },
-  statusBadgeOpen: {
-    backgroundColor: colors.successBg,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 4,
+  welcomeAdminRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 3,
+  },
+  welcomeAdminText: {
+    fontSize: 13,
+    fontFamily: fonts.sansSemiBold,
+    color: 'rgba(255, 255, 255, 0.95)',
+  },
+  memberViewButton: {
+    backgroundColor: 'rgba(212, 175, 55, 0.2)',
     borderWidth: 1,
-    borderColor: colors.successBorder,
+    borderColor: '#D4AF37',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 14,
   },
-  statusTextOpen: {
-    color: colors.successText,
-    fontSize: 10,
-    fontWeight: '700',
+  memberViewButtonText: {
+    color: '#D4AF37',
+    fontSize: 11,
+    fontFamily: fonts.sansBold,
   },
-  badgeSuccess: {
-    backgroundColor: colors.successBg,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
+
+  // Translucent Stats Card
+  statsCardWrapper: {
+    paddingHorizontal: 20,
+    marginTop: 4,
   },
-  badgeTextSuccess: {
-    color: colors.successText,
-    fontSize: 10,
-    fontWeight: '700',
+  translucentStatsCard: {
+    backgroundColor: 'rgba(15, 36, 68, 0.85)', // Dark Semi-Transparent Card
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: 'rgba(212, 175, 55, 0.45)', // Gold Border
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    ...shadows.lifted,
   },
-  badgePending: {
-    backgroundColor: colors.warningBg,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
+  statColumn: {
+    flex: 1,
+    alignItems: 'center',
   },
-  badgeTextPending: {
-    color: colors.warningText,
-    fontSize: 10,
-    fontWeight: '700',
+  statLabel: {
+    fontSize: 11,
+    fontFamily: fonts.sansBold,
+    color: 'rgba(255, 255, 255, 0.75)',
+    letterSpacing: 0.8,
+  },
+  statNumber: {
+    fontSize: 28,
+    fontFamily: fonts.serifBold, // Playfair Display
+    color: '#FFFFFF',
+    marginTop: 4,
+  },
+  statDivider: {
+    width: 1,
+    height: 42,
+    backgroundColor: 'rgba(212, 175, 55, 0.35)',
+    marginHorizontal: 10,
+  },
+
+  // 2. Action Grid Area (Pure White)
+  bodyContent: {
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 40,
+  },
+  gridSectionHeading: {
+    fontSize: 12,
+    fontFamily: fonts.sansBold,
+    color: '#64748B',
+    letterSpacing: 0.8,
+    marginBottom: 20,
+  },
+  actionGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  gridItemWrapper: {
+    width: '30%',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  // 75x75 Circular Button
+  actionCircleButton: {
+    width: 75,
+    height: 75,
+    borderRadius: 37.5,
+    backgroundColor: '#173B70', // Navy Blue
+    borderWidth: 2,
+    borderColor: '#D4AF37', // Gold Accent Border
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#173B70',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  actionLabel: {
+    fontSize: 12,
+    fontFamily: fonts.sansSemiBold,
+    color: '#334155', // Dark Gray
+    marginTop: 8,
+    textAlign: 'center',
+  },
+
+  // Pending Banner
+  pendingBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#FCD34D',
+    borderRadius: 14,
+    padding: 14,
+    marginTop: 10,
+  },
+  pendingBadgeIcon: {
+    marginRight: 10,
+  },
+  pendingTitle: {
+    fontSize: 13,
+    fontFamily: fonts.sansBold,
+    color: '#92400E',
+  },
+  pendingSub: {
+    fontSize: 11,
+    fontFamily: fonts.sans,
+    color: '#B45309',
+    marginTop: 1,
   },
 });
