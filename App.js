@@ -59,9 +59,9 @@ function MainTabs() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: '#0F172A', // Solid Dark Navy (#0F172A)
-          borderTopWidth: 1.5,
-          borderTopColor: '#D4AF37', // Gold top accent border
+          backgroundColor: '#173B70', // Rich Solid Navy (#173B70)
+          borderTopWidth: 2,
+          borderTopColor: '#D4AF37', // Crisp Gold Top Border
           height: 64,
           paddingBottom: 8,
           paddingTop: 8,

@@ -134,7 +134,7 @@ export default function HomeScreen({ navigation }) {
             .order('opens_at', { ascending: false })
             .limit(1);
 
-          // If no currently active window, fetch the most recent activity for seamless check-in routing
+          // If no currently active window, fetch latest for seamless check-in routing
           if (!activities || activities.length === 0) {
             const { data: latestActs } = await supabase
               .from('activities')
@@ -249,22 +249,22 @@ export default function HomeScreen({ navigation }) {
         <Text style={[styles.bgMusicNote, { top: 640, right: 22 }]}>♩</Text>
       </View>
 
-      {/* 3. The Wavy Navy Header with Musical Notes & Gold Curved Border */}
+      {/* 3. The Navy Header with Clean Rounded-Square Logo Container & Gold Curved Bottom */}
       <View style={styles.headerWrapper}>
         <SafeAreaView edges={['top', 'left', 'right']} style={styles.headerSafeArea}>
-          {/* Faint Musical Notes Inside Header */}
+          {/* Subtle Musical Texture inside Header */}
           <View style={styles.headerMusicalBackground} pointerEvents="none">
             <Text style={[styles.headerMusicNote, { top: 12, right: 30 }]}>♪</Text>
             <Text style={[styles.headerMusicNote, { top: 42, right: 80, fontSize: 24 }]}>♫</Text>
             <Text style={[styles.headerMusicNote, { top: 68, left: 20 }]}>♩</Text>
             <Text style={[styles.headerMusicNote, { top: 20, left: 130, fontSize: 20 }]}>♬</Text>
-            <Text style={[styles.headerMusicNote, { top: 55, right: 140 }]}>♪</Text>
           </View>
 
-          {/* Top Bar: Logo & Notification Bell */}
+          {/* Top Bar: Clean White Rounded Square Logo Box & Notification Bell */}
           <View style={styles.headerTopBar}>
             <View style={styles.headerLeft}>
-              <View style={styles.headerLogoCircle}>
+              {/* Logo in Clean White Rounded Square Container (Picture 2 Style) */}
+              <View style={styles.headerLogoBox}>
                 <Image
                   source={require('../../assets/logo.png')}
                   style={styles.headerLogo}
@@ -301,25 +301,25 @@ export default function HomeScreen({ navigation }) {
           </View>
         </SafeAreaView>
 
-        {/* Wavy SVG Bottom Curve with 4px Thick Gold Border */}
+        {/* Wavy SVG Bottom Curve with 4px Thick Gold Border (Safely Positioned Below Header Content) */}
         <Svg
           width="100%"
-          height={40}
-          viewBox="0 0 375 40"
+          height={32}
+          viewBox="0 0 375 32"
           preserveAspectRatio="none"
           style={styles.wavySvg}
         >
           {/* Navy Wave Body */}
           <Path
-            d="M0,0 L375,0 L375,12 Q280,38 187.5,20 Q95,2 0,28 Z"
+            d="M0,0 L375,0 L375,10 Q280,30 187.5,16 Q95,2 0,22 Z"
             fill="#173B70"
           />
           {/* Thick Gold Wave Border Along the Bottom */}
           <Path
-            d="M0,28 Q95,2 187.5,20 Q280,38 375,12"
+            d="M0,22 Q95,2 187.5,16 Q280,30 375,10"
             fill="none"
             stroke="#D4AF37"
-            strokeWidth="4"
+            strokeWidth="3.5"
           />
         </Svg>
       </View>
@@ -328,8 +328,9 @@ export default function HomeScreen({ navigation }) {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* 4. The Giant Check-In Button (Solid Navy, 4px Gold Border, Soft Navy Shadow, Camera Icon) */}
+        {/* 4. The Giant Check-In Button Area (Camera Icon + Check In Pill Button) */}
         <View style={styles.buttonSection}>
+          {/* Giant Gold Ring with White Camera Icon */}
           <TouchableOpacity
             style={styles.giantButton}
             onPress={handleCheckInPress}
@@ -343,6 +344,27 @@ export default function HomeScreen({ navigation }) {
 
             {/* Bold White Action Text */}
             <Text style={styles.giantButtonText}>CHECK IN</Text>
+          </TouchableOpacity>
+
+          {/* Dedicated Navy Pill-Shaped "Check In →" Button Directly Below Circle */}
+          <TouchableOpacity
+            style={styles.pillCheckInButton}
+            onPress={handleCheckInPress}
+            activeOpacity={0.85}
+          >
+            <Ionicons
+              name="camera"
+              size={18}
+              color="#D4AF37"
+              style={{ marginRight: 8 }}
+            />
+            <Text style={styles.pillCheckInText}>Check In</Text>
+            <Ionicons
+              name="arrow-forward"
+              size={18}
+              color="#D4AF37"
+              style={{ marginLeft: 8 }}
+            />
           </TouchableOpacity>
 
           {/* Gray Action Instruction Text */}
@@ -413,7 +435,7 @@ const styles = StyleSheet.create({
     height: 320,
     alignSelf: 'center',
     top: '30%',
-    opacity: 0.04, // Strict approved faint watermark
+    opacity: 0.04,
     zIndex: 0,
   },
   centered: {
@@ -438,7 +460,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
-  // 1. Wavy Header Styles
+  // 1. Header Styles
   headerWrapper: {
     backgroundColor: '#173B70', // Dark Navy
     overflow: 'hidden',
@@ -448,7 +470,7 @@ const styles = StyleSheet.create({
   headerSafeArea: {
     paddingHorizontal: 20,
     paddingTop: 10,
-    paddingBottom: 4,
+    paddingBottom: 14, // Generous breathing room
     position: 'relative',
   },
   headerMusicalBackground: {
@@ -474,17 +496,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  headerLogoCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  // Clean White Rounded Square Container (Picture 2 Style)
+  headerLogoBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 12, // Rounded square container
     backgroundColor: '#FFFFFF',
-    padding: 3,
+    padding: 4,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
     borderWidth: 1.5,
     borderColor: '#D4AF37', // Gold trim
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 3,
   },
   headerLogo: {
     width: '100%',
@@ -534,7 +562,7 @@ const styles = StyleSheet.create({
   welcomeContainer: {
     alignItems: 'center',
     marginTop: 4,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   welcomeGoldIconWrapper: {
     width: 32,
@@ -547,7 +575,7 @@ const styles = StyleSheet.create({
   },
   welcomeGreeting: {
     fontSize: 26,
-    fontFamily: fonts.serif, // Playfair Display
+    fontFamily: fonts.serif,
     color: '#FFFFFF',
     letterSpacing: -0.3,
     textAlign: 'center',
@@ -566,19 +594,19 @@ const styles = StyleSheet.create({
   // Scroll Content
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: 24,
+    paddingTop: 20,
     paddingBottom: 30,
   },
 
-  // 2. Giant Button (Solid Navy, 4px Gold Border, Soft Navy Shadow)
+  // 2. Giant Button & Pill Button
   buttonSection: {
     alignItems: 'center',
-    marginVertical: 18,
+    marginVertical: 14,
   },
   giantButton: {
-    width: 168,
-    height: 168,
-    borderRadius: 84,
+    width: 164,
+    height: 164,
+    borderRadius: 82,
     backgroundColor: '#173B70', // Solid Navy
     borderWidth: 4,
     borderColor: '#D4AF37', // 4px Gold Border
@@ -586,7 +614,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     position: 'relative',
     overflow: 'hidden',
-    // Mature, Premium Soft Navy Shadow
+    // Mature, Soft Navy Shadow
     shadowColor: '#173B70',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.15,
@@ -609,17 +637,39 @@ const styles = StyleSheet.create({
     fontFamily: fonts.sansBold,
     letterSpacing: 1.5,
   },
+  pillCheckInButton: {
+    marginTop: 14,
+    borderRadius: 24,
+    backgroundColor: '#173B70', // Solid Navy
+    borderWidth: 1.5,
+    borderColor: '#D4AF37', // Gold border
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 11,
+    paddingHorizontal: 26,
+    shadowColor: '#173B70',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  pillCheckInText: {
+    fontSize: 15,
+    fontFamily: fonts.sansBold,
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
   buttonInstructionText: {
     fontSize: 13,
     fontFamily: fonts.sans,
     color: '#64748B', // Gray
     textAlign: 'center',
-    marginTop: 14,
+    marginTop: 12,
     maxWidth: 280,
     lineHeight: 18,
   },
   sessionStatusRow: {
-    marginTop: 16,
+    marginTop: 14,
   },
   statusLivePill: {
     flexDirection: 'row',
@@ -671,10 +721,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 18,
     borderWidth: 2,
-    borderColor: '#D4AF37', // Crisp 2px Gold Border
+    borderColor: '#D4AF37',
     padding: 18,
-    marginTop: 12,
-    marginBottom: 20,
+    marginTop: 8,
+    marginBottom: 18,
     ...shadows.card,
   },
   dateCardRow: {
@@ -701,8 +751,8 @@ const styles = StyleSheet.create({
   },
   dateCardValue: {
     fontSize: 22,
-    fontFamily: fonts.serif, // Playfair Display
-    color: '#173B70', // Navy
+    fontFamily: fonts.serif,
+    color: '#173B70',
     marginTop: 2,
   },
   dateCardSub: {
@@ -715,7 +765,7 @@ const styles = StyleSheet.create({
   // 4. Spiritual Quote & Ministry Footer
   footerContainer: {
     alignItems: 'center',
-    marginVertical: 20,
+    marginVertical: 18,
     paddingHorizontal: 10,
   },
   quoteWrapper: {
@@ -727,7 +777,7 @@ const styles = StyleSheet.create({
   quoteGoldLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#D4AF37', // Gold line
+    backgroundColor: '#D4AF37',
     opacity: 0.45,
   },
   quoteText: {
@@ -741,7 +791,7 @@ const styles = StyleSheet.create({
   footerMinistrySubtitle: {
     fontSize: 10,
     fontFamily: fonts.sansBold,
-    color: '#D4AF37', // Gold Accent
+    color: '#D4AF37',
     letterSpacing: 1.2,
     marginTop: 6,
     textAlign: 'center',
