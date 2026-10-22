@@ -209,8 +209,9 @@ export default function App() {
           <Stack.Screen name="FailedAttempts" component={FailedAttemptsScreen} />
           <Stack.Screen name="AdminManagement" component={AdminManagementScreen} />
 
-          {/* Backward-compatibility route for older navigation calls */}
+          {/* Backward-compatibility routes for older navigation calls */}
           <Stack.Screen name="AdminDashboard" component={SuperAdminDashboardScreen} />
+          <Stack.Screen name="SuperAdminDashboardScreen" component={SuperAdminDashboardScreen} />
         </Stack.Navigator>
       </NavigationContainer>
       <UpdateModal />

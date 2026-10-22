@@ -89,9 +89,12 @@ export default function HomeScreen({ navigation }) {
             .single();
 
           if (isMounted) {
-            if (profile && profile.name) {
-              setUserProfile(profile);
-              await AsyncStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(profile));
+            const isKnownSuperAdmin = currentUser.email?.toLowerCase() === 'akpodomagoodluck9@gmail.com';
+            if (profile) {
+              const effectiveRole = profile.role || (isKnownSuperAdmin ? 'super_admin' : 'member');
+              const finalProfile = { ...profile, role: effectiveRole };
+              setUserProfile(finalProfile);
+              await AsyncStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(finalProfile));
             } else {
               const meta = currentUser.user_metadata || {};
               const healedProfile = {
@@ -101,7 +104,7 @@ export default function HomeScreen({ navigation }) {
                 instrument: (meta.instrument && meta.instrument !== 'Musician')
                   ? meta.instrument
                   : ((profile?.instrument && profile.instrument !== 'Musician') ? profile.instrument : 'Keyboard'),
-                role: meta.role || profile?.role || 'member',
+                role: meta.role || (isKnownSuperAdmin ? 'super_admin' : 'member'),
                 password_hash: 'managed_by_supabase_auth',
               };
               setUserProfile(healedProfile);
@@ -229,6 +232,16 @@ export default function HomeScreen({ navigation }) {
 
   const meta = user?.user_metadata || {};
   const name = userProfile?.name || meta.full_name || 'Member';
+  const userRole = (userProfile?.role || meta.role || '').toLowerCase();
+  const isSuperAdmin =
+    userRole === 'super_admin' ||
+    userRole === 'admin' ||
+    user?.email?.toLowerCase() === 'akpodomagoodluck9@gmail.com';
+
+  const navigateToAdmin = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    navigation.navigate('SuperAdminDashboard');
+  };
 
   return (
     <View style={styles.container}>
@@ -278,6 +291,17 @@ export default function HomeScreen({ navigation }) {
             </View>
 
             <View style={styles.headerRight}>
+              {isSuperAdmin && (
+                <TouchableOpacity
+                  style={styles.headerAdminButton}
+                  onPress={navigateToAdmin}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="shield-checkmark" size={15} color="#D4AF37" style={{ marginRight: 4 }} />
+                  <Text style={styles.headerAdminButtonText}>Admin</Text>
+                </TouchableOpacity>
+              )}
+
               <TouchableOpacity
                 style={styles.headerBellButton}
                 onPress={() => navigation.navigate('Notifications')}
@@ -366,7 +390,31 @@ export default function HomeScreen({ navigation }) {
           </View>
         </View>
 
-        {/* 6. Footer Spiritual Quote with Gold Lines & Ministry Subtitle */}
+        {/* 6. Super Admin Portal Access Card (Visible for Super Admin) */}
+        {isSuperAdmin && (
+          <TouchableOpacity
+            style={styles.adminPortalCard}
+            onPress={navigateToAdmin}
+            activeOpacity={0.88}
+          >
+            <View style={styles.adminPortalLeft}>
+              <View style={styles.adminPortalIconWrapper}>
+                <Ionicons name="shield-checkmark" size={24} color="#D4AF37" />
+              </View>
+              <View style={styles.adminPortalTextWrapper}>
+                <Text style={styles.adminPortalTitle}>Super Admin Dashboard</Text>
+                <Text style={styles.adminPortalSubtitle}>
+                  Attendance records, reports, directory & logs
+                </Text>
+              </View>
+            </View>
+            <View style={styles.adminPortalArrowBadge}>
+              <Ionicons name="chevron-forward" size={18} color="#D4AF37" />
+            </View>
+          </TouchableOpacity>
+        )}
+
+        {/* 7. Footer Spiritual Quote with Gold Lines & Ministry Subtitle */}
         <View style={styles.footerContainer}>
           <View style={styles.quoteWrapper}>
             <View style={styles.quoteGoldLine} />
@@ -684,5 +732,83 @@ const styles = StyleSheet.create({
     letterSpacing: 1.2,
     marginTop: 6,
     textAlign: 'center',
+  },
+
+  // 5. Admin Portal Header & Bottom Card Styles
+  headerAdminButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(212, 175, 55, 0.2)',
+    borderWidth: 1.5,
+    borderColor: '#D4AF37',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 18,
+    marginRight: 8,
+  },
+  headerAdminButtonText: {
+    color: '#D4AF37',
+    fontSize: 12,
+    fontFamily: fonts.sansBold,
+    letterSpacing: 0.3,
+  },
+  adminPortalCard: {
+    backgroundColor: '#173B70', // Rich Solid Navy
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#D4AF37', // Gold Accent Border
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 18,
+    marginBottom: 8,
+    shadowColor: '#173B70',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  adminPortalLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  adminPortalIconWrapper: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(212, 175, 55, 0.16)',
+    borderWidth: 1,
+    borderColor: '#D4AF37',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  adminPortalTextWrapper: {
+    flex: 1,
+  },
+  adminPortalTitle: {
+    fontSize: 15,
+    fontFamily: fonts.sansBold,
+    color: '#FFFFFF',
+    letterSpacing: -0.2,
+  },
+  adminPortalSubtitle: {
+    fontSize: 12,
+    fontFamily: fonts.sans,
+    color: '#CBD5E1',
+    marginTop: 2,
+  },
+  adminPortalArrowBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(212, 175, 55, 0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(212, 175, 55, 0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
   },
 });
