@@ -239,31 +239,41 @@ export default function SuperAdminDashboardScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      {/* ── 1. The Dark Navy Hero Header (Top 35% of Screen) ── */}
+      {/* ── 1. The Dark Navy Hero Header (Top 40% of Screen, Straight Edges) ── */}
       <View style={styles.heroHeader}>
+        {/* Subtle Geometric Texture Overlay (Large Overlapping Squares) */}
+        <View style={styles.geometricPatternContainer} pointerEvents="none">
+          <View style={[styles.geometricSquare, { top: -40, right: -30, width: 200, height: 200, transform: [{ rotate: '15deg' }] }]} />
+          <View style={[styles.geometricSquare, { top: 70, right: 30, width: 150, height: 150, transform: [{ rotate: '32deg' }] }]} />
+          <View style={[styles.geometricSquare, { top: 120, left: -60, width: 180, height: 180, transform: [{ rotate: '25deg' }] }]} />
+        </View>
+
         <SafeAreaView edges={['top', 'left', 'right']} style={styles.heroSafeArea}>
-          {/* Top Bar: Hamburger, Title, Notification Bell */}
+          {/* Top App Bar: Hamburger, "Dashboard" (Playfair Display 24px), Notification Bell with Red Badge "25" */}
           <View style={styles.topBar}>
             <TouchableOpacity
               style={styles.iconButton}
               onPress={() => navigation.navigate('Home')}
               activeOpacity={0.7}
             >
-              <Ionicons name="menu" size={24} color="#FFFFFF" />
+              <Ionicons name="menu" size={26} color="#FFFFFF" />
             </TouchableOpacity>
 
             <Text style={styles.topBarTitle}>Dashboard</Text>
 
             <TouchableOpacity
-              style={styles.iconButton}
+              style={styles.bellButtonWrapper}
               onPress={() => navigation.navigate('Notifications')}
               activeOpacity={0.7}
             >
-              <Ionicons name="notifications" size={20} color="#D4AF37" />
+              <Ionicons name="notifications" size={24} color="#FFFFFF" />
+              <View style={styles.notificationBadge}>
+                <Text style={styles.notificationBadgeText}>25</Text>
+              </View>
             </TouchableOpacity>
           </View>
 
-          {/* Profile Row: Large White Circle with GGM Logo + Details */}
+          {/* Profile Row: Large Circular Logo Container + Details */}
           <View style={styles.profileRow}>
             <View style={styles.profileLogoCircle}>
               <Image
@@ -277,14 +287,14 @@ export default function SuperAdminDashboardScreen({ navigation }) {
               <Text style={styles.brandTitle}>GGM Instrumentalists</Text>
               <Text style={styles.brandSubtitle}>Gods Ministry Inc.</Text>
               <View style={styles.welcomeAdminRow}>
+                <Ionicons name="checkmark-circle" size={17} color="#38BDF8" style={{ marginRight: 6 }} />
                 <Text style={styles.welcomeAdminText} numberOfLines={1}>
                   Welcome, {adminName}
                 </Text>
-                <Ionicons name="checkmark-circle" size={16} color="#38BDF8" style={{ marginLeft: 5 }} />
               </View>
             </View>
 
-            {/* Quick Switch to Member View */}
+            {/* Switch to Member View */}
             <TouchableOpacity
               style={styles.memberViewButton}
               onPress={() => navigation.navigate('Home')}
@@ -293,10 +303,8 @@ export default function SuperAdminDashboardScreen({ navigation }) {
               <Text style={styles.memberViewButtonText}>Member View</Text>
             </TouchableOpacity>
           </View>
-        </SafeAreaView>
 
-        {/* ── Translucent Stats Card Overlapping the Bottom of Header ── */}
-        <View style={styles.statsCardWrapper}>
+          {/* Translucent Info Card (borderRadius: 16, rgba(255, 255, 255, 0.15)) */}
           <View style={styles.translucentStatsCard}>
             <View style={styles.statColumn}>
               <Text style={styles.statLabel}>TOTAL MEMBERS</Text>
@@ -307,13 +315,13 @@ export default function SuperAdminDashboardScreen({ navigation }) {
 
             <View style={styles.statColumn}>
               <Text style={styles.statLabel}>TODAY'S CHECK-INS</Text>
-              <Text style={[styles.statNumber, { color: '#D4AF37' }]}>{checkedInCount}</Text>
+              <Text style={styles.statNumber}>{checkedInCount}</Text>
             </View>
           </View>
-        </View>
+        </SafeAreaView>
       </View>
 
-      {/* ── 2. Pure White Body Area Below Header ── */}
+      {/* ── 2. The Clean Transition to Pure White (#FFFFFF) 3x3 Action Grid ── */}
       <ScrollView
         contentContainerStyle={styles.bodyContent}
         showsVerticalScrollIndicator={false}
@@ -378,59 +386,95 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  // 1. Hero Header Styles (Top 35% Solid Navy)
+  // 1. Hero Header Styles (Top 40% Solid Navy, Straight Clean Edges)
   heroHeader: {
     backgroundColor: '#173B70', // Solid Navy (#173B70)
-    paddingBottom: 28,
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
+    paddingBottom: 22,
+    position: 'relative',
     ...shadows.lifted,
     zIndex: 10,
+  },
+  // Subtle Geometric Texture Overlay (Overlapping Squares)
+  geometricPatternContainer: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: 'hidden',
+  },
+  geometricSquare: {
+    position: 'absolute',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    borderRadius: 18,
   },
   heroSafeArea: {
     paddingHorizontal: 20,
     paddingTop: 8,
   },
+
+  // Top App Bar
   topBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 18,
   },
   iconButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    width: 40,
+    height: 40,
     justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(212, 175, 55, 0.3)',
+    alignItems: 'flex-start',
   },
   topBarTitle: {
-    fontSize: 18,
-    fontFamily: fonts.serifSemiBold,
+    fontSize: 24,
+    fontFamily: fonts.serifBold, // Playfair Display 24px
     color: '#FFFFFF',
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
+  },
+  bellButtonWrapper: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'flex-end',
+    position: 'relative',
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: 2,
+    right: -4,
+    backgroundColor: '#EF4444', // Red Badge
+    borderRadius: 9,
+    minWidth: 18,
+    height: 18,
+    paddingHorizontal: 3,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#173B70',
+  },
+  notificationBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontFamily: fonts.sansBold,
+    textAlign: 'center',
   },
 
   // Profile Row
   profileRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 18,
   },
   profileLogoCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
     backgroundColor: '#FFFFFF',
     padding: 4,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 14,
     borderWidth: 2,
-    borderColor: '#D4AF37', // Gold trim
+    borderColor: 'rgba(255, 255, 255, 0.7)', // Subtle white border
     ...shadows.card,
   },
   profileLogo: {
@@ -441,26 +485,26 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   brandTitle: {
-    fontSize: 16,
-    fontFamily: fonts.sansBold,
+    fontSize: 18,
+    fontFamily: fonts.sansSemiBold, // Inter SemiBold 18px
     color: '#FFFFFF',
     letterSpacing: -0.2,
   },
   brandSubtitle: {
-    fontSize: 12,
-    fontFamily: fonts.sansMedium,
-    color: '#D4AF37', // Gold Accent
+    fontSize: 14,
+    fontFamily: fonts.sans, // Inter Regular 14px
+    color: '#94A3B8', // Light Gray
     marginTop: 1,
   },
   welcomeAdminRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 3,
+    marginTop: 4,
   },
   welcomeAdminText: {
-    fontSize: 13,
-    fontFamily: fonts.sansSemiBold,
-    color: 'rgba(255, 255, 255, 0.95)',
+    fontSize: 16,
+    fontFamily: fonts.sansSemiBold, // Inter 16px
+    color: '#FFFFFF',
   },
   memberViewButton: {
     backgroundColor: 'rgba(212, 175, 55, 0.2)',
@@ -477,20 +521,16 @@ const styles = StyleSheet.create({
   },
 
   // Translucent Stats Card
-  statsCardWrapper: {
-    paddingHorizontal: 20,
-    marginTop: 4,
-  },
   translucentStatsCard: {
-    backgroundColor: 'rgba(15, 36, 68, 0.85)', // Dark Semi-Transparent Card
-    borderRadius: 18,
-    borderWidth: 1.5,
-    borderColor: 'rgba(212, 175, 55, 0.45)', // Gold Border
+    backgroundColor: 'rgba(255, 255, 255, 0.15)', // Translucent rgba(255, 255, 255, 0.15)
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
     paddingVertical: 16,
     paddingHorizontal: 20,
     flexDirection: 'row',
     alignItems: 'center',
-    ...shadows.lifted,
+    marginTop: 4,
   },
   statColumn: {
     flex: 1,
@@ -499,23 +539,23 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 11,
     fontFamily: fonts.sansBold,
-    color: 'rgba(255, 255, 255, 0.75)',
+    color: 'rgba(255, 255, 255, 0.75)', // Small gray/translucent
     letterSpacing: 0.8,
   },
   statNumber: {
     fontSize: 28,
-    fontFamily: fonts.serifBold, // Playfair Display
+    fontFamily: fonts.serifBold, // Large white
     color: '#FFFFFF',
     marginTop: 4,
   },
   statDivider: {
     width: 1,
     height: 42,
-    backgroundColor: 'rgba(212, 175, 55, 0.35)',
-    marginHorizontal: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    marginHorizontal: 12,
   },
 
-  // 2. Action Grid Area (Pure White)
+  // 2. Action Grid Area (Pure White #FFFFFF)
   bodyContent: {
     paddingHorizontal: 20,
     paddingTop: 24,
