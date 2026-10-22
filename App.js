@@ -116,7 +116,7 @@ function MainTabs() {
       />
       <Tab.Screen
         name="ProfileTab"
-        component={AccountSettingsScreen}
+        component={ProfileScreen}
         options={{
           tabBarLabel: 'Profile',
           tabBarIcon: ({ color, focused }) => (
@@ -154,7 +154,7 @@ export default function App() {
           .from('users')
           .select('role')
           .eq('id', user.id)
-          .single();
+          .maybeSingle();
         if (profile?.role) {
           return profile.role;
         }

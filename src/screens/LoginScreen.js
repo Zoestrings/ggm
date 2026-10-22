@@ -54,41 +54,44 @@ export default function LoginScreen({ navigation }) {
       if (error) throw error;
 
       // Cache and self-heal fresh profile from public.users table immediately
+      let userRole = 'member';
       if (data?.user?.id) {
         try {
-          const { data: profile } = await supabase
+          const { data: dbUser } = await supabase
             .from('users')
             .select('*')
             .eq('id', data.user.id)
             .maybeSingle();
 
-          if (profile && profile.name) {
-            await AsyncStorage.setItem('@ggm_user_profile', JSON.stringify(profile));
+          const isKnownSuperAdmin = data.user.email?.toLowerCase() === 'akpodomagoodluck9@gmail.com';
+          userRole = dbUser?.role || (isKnownSuperAdmin ? 'super_admin' : (data.user.user_metadata?.role || 'member'));
+
+          if (dbUser && dbUser.name) {
+            await AsyncStorage.setItem('@ggm_user_profile', JSON.stringify({ ...dbUser, role: userRole }));
           } else {
             const meta = data.user.user_metadata || {};
             const healed = {
               id: data.user.id,
               name: meta.full_name || meta.name || data.user.email?.split('@')[0] || 'Member',
-              phone: meta.phone || profile?.phone || '',
-              email: data.user.email || profile?.email || '',
+              phone: meta.phone || dbUser?.phone || '',
+              email: data.user.email || dbUser?.email || '',
               instrument: (meta.instrument && meta.instrument !== 'Musician')
                 ? meta.instrument
-                : ((profile?.instrument && profile.instrument !== 'Musician') ? profile.instrument : 'Keyboard'),
-              role: meta.role || profile?.role || 'member',
+                : ((dbUser?.instrument && dbUser.instrument !== 'Musician') ? dbUser.instrument : 'Keyboard'),
+              role: userRole,
               password_hash: 'managed_by_supabase_auth',
             };
             await supabase.from('users').upsert(healed, { onConflict: 'id' });
             await AsyncStorage.setItem('@ggm_user_profile', JSON.stringify(healed));
           }
         } catch (_cacheErr) {
-          // Non-blocking
+          console.warn('Profile cache notice on login:', _cacheErr);
         }
       }
 
       // Check user role to navigate directly to SuperAdminDashboard or Home
       const isKnownSuperAdmin = data.user?.email?.toLowerCase() === 'akpodomagoodluck9@gmail.com';
-      let userRole = profile?.role || data.user?.user_metadata?.role;
-      if (!userRole && isKnownSuperAdmin) userRole = 'super_admin';
+      if (isKnownSuperAdmin) userRole = 'super_admin';
 
       if (userRole === 'super_admin') {
         navigation.replace('SuperAdminDashboard');

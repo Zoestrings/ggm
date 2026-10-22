@@ -9,6 +9,9 @@ import {
   Alert,
   Image,
   Modal,
+  TextInput,
+  Switch,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -19,8 +22,10 @@ import { decode } from 'base64-arraybuffer';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { compressImage } from '../lib/image';
-import { colors, spacing } from '../theme';
-import PasswordField from '../components/PasswordField';
+import { fonts, shadows } from '../theme';
+
+const NOTIF_PREFS_KEY = 'notif_prefs';
+const PROFILE_CACHE_KEY = '@ggm_user_profile';
 
 export default function ProfileScreen({ navigation }) {
   const [user, setUser] = useState(null);
@@ -28,11 +33,24 @@ export default function ProfileScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [avatarUrl, setAvatarUrl] = useState(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+
+  // Preference switches
+  const [activityReminders, setActivityReminders] = useState(true);
+
+  // Security modals state
   const [changePwVisible, setChangePwVisible] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
-  const [isNewPwValid, setIsNewPwValid] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [updatingPw, setUpdatingPw] = useState(false);
+
+  const [changePhoneVisible, setChangePhoneVisible] = useState(false);
+  const [newPhone, setNewPhone] = useState('');
+  const [updatingPhone, setUpdatingPhone] = useState(false);
+
+  const [changeEmailVisible, setChangeEmailVisible] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
+  const [updatingEmail, setUpdatingEmail] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -42,33 +60,50 @@ export default function ProfileScreen({ navigation }) {
         try {
           setLoading(true);
           const { data: { user: authUser } } = await supabase.auth.getUser();
-          if (!authUser) { navigation.replace('Login'); return; }
+          if (!authUser) {
+            navigation.replace('Login');
+            return;
+          }
           if (isMounted) setUser(authUser);
 
-          // 1. Check cached profile first to eliminate UI flicker
+          // 1. Check cached profile first
           try {
-            const cached = await AsyncStorage.getItem('@ggm_user_profile');
+            const cached = await AsyncStorage.getItem(PROFILE_CACHE_KEY);
             if (cached && isMounted) {
               const parsed = JSON.parse(cached);
               if (parsed && parsed.id === authUser.id) {
                 setUserProfile(parsed);
+                setNewPhone(parsed.phone || '');
+                setNewEmail(parsed.email || authUser.email || '');
               }
             }
           } catch (_cErr) {}
 
-          // 2. Fetch fresh user profile from public.users table (source of truth)
+          // 2. Load preferences
+          try {
+            const rawPrefs = await AsyncStorage.getItem(NOTIF_PREFS_KEY);
+            if (rawPrefs && isMounted) {
+              const p = JSON.parse(rawPrefs);
+              if (p.activityReminders !== undefined) {
+                setActivityReminders(p.activityReminders);
+              }
+            }
+          } catch (_pErr) {}
+
+          // 3. Fetch fresh user profile from public.users table
           const { data: profile } = await supabase
             .from('users')
             .select('*')
             .eq('id', authUser.id)
             .single();
 
-          if (isMounted) {
-            if (profile) {
-              setUserProfile(profile);
-              await AsyncStorage.setItem('@ggm_user_profile', JSON.stringify(profile));
-            }
-            if (profile?.avatar_url) {
+          if (isMounted && profile) {
+            setUserProfile(profile);
+            setNewPhone(profile.phone || '');
+            setNewEmail(profile.email || authUser.email || '');
+            await AsyncStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(profile));
+
+            if (profile.avatar_url) {
               if (profile.avatar_url.startsWith('http')) {
                 setAvatarUrl(profile.avatar_url);
               } else {
@@ -82,16 +117,28 @@ export default function ProfileScreen({ navigation }) {
             }
           }
         } catch (err) {
-          console.error('ProfileScreen error:', err);
+          console.error('ProfileScreen load error:', err);
         } finally {
           if (isMounted) setLoading(false);
         }
       };
 
       loadProfile();
-      return () => { isMounted = false; };
+      return () => {
+        isMounted = false;
+      };
     }, [])
   );
+
+  const handleToggleReminders = async (val) => {
+    setActivityReminders(val);
+    try {
+      const raw = await AsyncStorage.getItem(NOTIF_PREFS_KEY);
+      const parsed = raw ? JSON.parse(raw) : {};
+      parsed.activityReminders = val;
+      await AsyncStorage.setItem(NOTIF_PREFS_KEY, JSON.stringify(parsed));
+    } catch (_e) {}
+  };
 
   const handlePickAvatar = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -133,8 +180,6 @@ export default function ProfileScreen({ navigation }) {
       const compressed = await compressImage(uri);
       const filePath = `${user.id}/avatar_${Date.now()}.jpg`;
 
-      // Read file as base64 then decode to ArrayBuffer — the correct
-      // approach for Supabase Storage uploads in React Native / Expo.
       const base64 = await FileSystem.readAsStringAsync(compressed, {
         encoding: FileSystem.EncodingType.Base64,
       });
@@ -153,9 +198,9 @@ export default function ProfileScreen({ navigation }) {
         .createSignedUrl(filePath, 3600);
       setAvatarUrl(signedData?.signedUrl || null);
 
-      Alert.alert('Success', 'Profile picture updated!');
+      Alert.alert('Success', 'Profile picture updated successfully!');
     } catch (err) {
-      Alert.alert('Upload Failed', err.message || 'Could not upload. Please try again.');
+      Alert.alert('Upload Failed', err.message || 'Could not upload image.');
       console.error('Avatar upload error:', err);
     } finally {
       setUploadingAvatar(false);
@@ -163,7 +208,7 @@ export default function ProfileScreen({ navigation }) {
   };
 
   const showAvatarOptions = () => {
-    Alert.alert('Profile Picture', 'Choose a source', [
+    Alert.alert('Change Profile Picture', 'Select photo source', [
       { text: 'Choose from Library', onPress: handlePickAvatar },
       { text: 'Take a Photo', onPress: handleTakePhoto },
       { text: 'Cancel', style: 'cancel' },
@@ -175,14 +220,17 @@ export default function ProfileScreen({ navigation }) {
       Alert.alert('Required', 'Please enter your current password.');
       return;
     }
-    if (!isNewPwValid) {
-      Alert.alert('Incomplete Password', 'Please ensure your new password satisfies all 5 security requirements.');
+    if (!newPassword || newPassword.length < 6) {
+      Alert.alert('Invalid Password', 'New password must be at least 6 characters.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      Alert.alert('Mismatch', 'New password and confirmation do not match.');
       return;
     }
 
     setUpdatingPw(true);
     try {
-      // 1. Re-authenticate with current password to verify identity
       const userEmail = user?.email || userProfile?.email;
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: userEmail,
@@ -194,25 +242,79 @@ export default function ProfileScreen({ navigation }) {
         return;
       }
 
-      // 2. Update to new password
       const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
       if (updateError) throw updateError;
 
+      Alert.alert('Success', 'Your password has been changed.');
       setChangePwVisible(false);
       setCurrentPassword('');
       setNewPassword('');
-      Alert.alert('Password Updated', 'Your password has been changed successfully.');
+      setConfirmPassword('');
     } catch (err) {
-      Alert.alert('Update Failed', err.message || 'Could not update password. Try again.');
+      Alert.alert('Update Failed', err.message || 'Could not update password.');
     } finally {
       setUpdatingPw(false);
+    }
+  };
+
+  const handleUpdatePhone = async () => {
+    if (!newPhone.trim()) {
+      Alert.alert('Required', 'Please enter a valid phone number.');
+      return;
+    }
+    setUpdatingPhone(true);
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({ phone: newPhone.trim() })
+        .eq('id', user.id);
+      if (error) throw error;
+
+      const updated = { ...userProfile, phone: newPhone.trim() };
+      setUserProfile(updated);
+      await AsyncStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(updated));
+
+      Alert.alert('Success', 'Phone number updated successfully.');
+      setChangePhoneVisible(false);
+    } catch (err) {
+      Alert.alert('Update Failed', err.message || 'Could not update phone number.');
+    } finally {
+      setUpdatingPhone(false);
+    }
+  };
+
+  const handleUpdateEmail = async () => {
+    if (!newEmail.trim() || !newEmail.includes('@')) {
+      Alert.alert('Required', 'Please enter a valid email address.');
+      return;
+    }
+    setUpdatingEmail(true);
+    try {
+      const { error: authError } = await supabase.auth.updateUser({ email: newEmail.trim() });
+      if (authError) throw authError;
+
+      await supabase
+        .from('users')
+        .update({ email: newEmail.trim() })
+        .eq('id', user.id);
+
+      const updated = { ...userProfile, email: newEmail.trim() };
+      setUserProfile(updated);
+      await AsyncStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(updated));
+
+      Alert.alert('Verification Sent', 'Please check your new email address to confirm this change.');
+      setChangeEmailVisible(false);
+    } catch (err) {
+      Alert.alert('Update Failed', err.message || 'Could not update email.');
+    } finally {
+      setUpdatingEmail(false);
     }
   };
 
   const handleSignOut = () => {
     Alert.alert(
       'Log Out',
-      'Are you sure you want to log out?',
+      'Are you sure you want to log out of your account?',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -220,11 +322,12 @@ export default function ProfileScreen({ navigation }) {
           style: 'destructive',
           onPress: async () => {
             try {
-              await AsyncStorage.removeItem('@ggm_user_profile');
+              await AsyncStorage.multiRemove([PROFILE_CACHE_KEY, NOTIF_PREFS_KEY, '@ggm_pending_checkins']);
               await supabase.auth.signOut();
               navigation.replace('Login');
-            } catch (error) {
-              Alert.alert('Error', error.message || 'Failed to sign out.');
+            } catch (err) {
+              console.error('Sign out error:', err);
+              navigation.replace('Login');
             }
           },
         },
@@ -232,181 +335,357 @@ export default function ProfileScreen({ navigation }) {
     );
   };
 
-  if (loading) {
+  if (loading && !userProfile) {
     return (
       <View style={[styles.container, styles.centered]}>
-        <ActivityIndicator size="large" color={colors.primary} />
+        <ActivityIndicator size="large" color="#173B70" />
       </View>
     );
   }
 
   const meta = user?.user_metadata || {};
-  const name = userProfile?.name || meta.full_name || user?.email || 'Member';
-  const instrument = userProfile?.instrument || meta.instrument || '—';
-  const phone = userProfile?.phone || meta.phone || '—';
-  const email = userProfile?.email || user?.email || '—';
-  const role = userProfile?.role || meta.role || 'member';
-  const initials = name.split(' ').map((n) => n.charAt(0).toUpperCase()).slice(0, 2).join('');
+  const fullName = userProfile?.name || meta.full_name || 'Member';
+  const phone = userProfile?.phone || meta.phone || 'Not provided';
+  const email = user?.email || userProfile?.email || 'Not provided';
+  const instrument = userProfile?.instrument || meta.instrument || 'Keyboard';
+  const roleName = (userProfile?.role || meta.role || 'MEMBER').toUpperCase().replace('_', ' ');
+  const initial = fullName.charAt(0).toUpperCase();
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      <Image source={require('../../assets/logo.png')} style={styles.watermark} resizeMode="contain" />
-
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()} activeOpacity={0.7}>
-          <Ionicons name="arrow-back-outline" size={22} color={colors.textSecondary} />
-        </TouchableOpacity>
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>My Profile</Text>
-          <Text style={styles.headerSubtitle}>GGM Instrumentalists</Text>
-        </View>
-        <View style={{ width: 38 }} />
-      </View>
-
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Avatar Section */}
-        <View style={styles.avatarSection}>
-          <TouchableOpacity style={styles.avatarWrapper} onPress={showAvatarOptions} activeOpacity={0.85} disabled={uploadingAvatar}>
-            {uploadingAvatar ? (
-              <View style={styles.avatarCircle}>
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              </View>
-            ) : avatarUrl ? (
-              <Image source={{ uri: avatarUrl }} style={styles.avatarCircle} resizeMode="cover" />
+    <SafeAreaView edges={['top', 'left', 'right']} style={styles.container}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* ── 1. The Profile Header (Centered) ── */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.avatarContainer}
+            onPress={showAvatarOptions}
+            activeOpacity={0.85}
+          >
+            {avatarUrl ? (
+              <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
             ) : (
-              <View style={styles.avatarCircle}>
-                <Text style={styles.avatarInitials}>{initials}</Text>
+              <View style={styles.avatarFallback}>
+                <Text style={styles.avatarInitial}>{initial}</Text>
               </View>
             )}
+
+            {/* Small Camera Overlay on Bottom Right */}
             <View style={styles.cameraBadge}>
-              <Ionicons name="camera" size={14} color="#FFFFFF" />
+              {uploadingAvatar ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Ionicons name="camera" size={16} color="#FFFFFF" />
+              )}
             </View>
           </TouchableOpacity>
 
-          <Text style={styles.avatarName}>{name}</Text>
+          {/* User Name in Playfair Display (Navy, 24px) */}
+          <Text style={styles.userName}>{fullName}</Text>
 
-          <View style={styles.instrumentBadge}>
-            <Ionicons name="musical-notes-outline" size={13} color={colors.primary} style={{ marginRight: 5 }} />
-            <Text style={styles.instrumentBadgeText}>{instrument}</Text>
+          {/* Navy Pill Role Badge */}
+          <View style={styles.roleBadge}>
+            <Text style={styles.roleBadgeText}>{roleName}</Text>
           </View>
 
-          <TouchableOpacity style={styles.changePhotoLink} onPress={showAvatarOptions} activeOpacity={0.7} disabled={uploadingAvatar}>
-            <Text style={styles.changePhotoLinkText}>
-              {uploadingAvatar ? 'Uploading...' : 'Change Profile Picture'}
-            </Text>
+          {/* Change Profile Picture Link */}
+          <TouchableOpacity onPress={showAvatarOptions} activeOpacity={0.7}>
+            <Text style={styles.changePhotoLink}>Change Profile Picture</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Personal Info Card */}
-        <View style={styles.detailsCard}>
-          <Text style={styles.cardSectionLabel}>PERSONAL INFORMATION</Text>
-          <DetailRow icon="person-outline" label="Full Name" value={name} />
-          <DetailRow icon="musical-notes-outline" label="Instrument" value={instrument} />
-          <DetailRow icon="call-outline" label="Phone" value={phone} />
-          <DetailRow icon="mail-outline" label="Email" value={email} />
-          <DetailRow
-            icon="shield-checkmark-outline"
-            label="Role"
-            value={role.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
-            last
-          />
+        {/* ── 2. Card 1: PERSONAL INFORMATION ── */}
+        <View style={styles.card}>
+          <Text style={styles.cardHeaderTitle}>PERSONAL INFORMATION</Text>
+
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Full Name</Text>
+            <Text style={styles.infoValue}>{fullName}</Text>
+          </View>
+
+          <View style={styles.divider} />
+
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Phone Number</Text>
+            <Text style={styles.infoValue}>{phone}</Text>
+          </View>
+
+          <View style={styles.divider} />
+
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Email Address</Text>
+            <Text style={styles.infoValue} numberOfLines={1}>{email}</Text>
+          </View>
         </View>
 
-        {/* Organisation Card */}
-        <View style={styles.detailsCard}>
-          <Text style={styles.cardSectionLabel}>ORGANISATION</Text>
-          <DetailRow icon="business-outline" label="Ministry" value="Gods Ministry Inc." />
-          <DetailRow icon="people-outline" label="Department" value="GGM Instrumentalists" last />
+        {/* ── 3. Card 2: ORGANISATION ── */}
+        <View style={styles.card}>
+          <Text style={styles.cardHeaderTitle}>ORGANISATION</Text>
+
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Ministry</Text>
+            <Text style={styles.infoValue}>God's Grace Ministry</Text>
+          </View>
+
+          <View style={styles.divider} />
+
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Department</Text>
+            <Text style={styles.infoValue}>GGM Instrumentalists</Text>
+          </View>
+
+          <View style={styles.divider} />
+
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Section / Instrument</Text>
+            <View style={styles.instrumentBadge}>
+              <Ionicons name="musical-notes" size={13} color="#173B70" style={{ marginRight: 4 }} />
+              <Text style={styles.instrumentBadgeText}>{instrument}</Text>
+            </View>
+          </View>
         </View>
 
-        {/* Security / Change Password */}
-        <View style={styles.detailsCard}>
-          <Text style={styles.cardSectionLabel}>SECURITY</Text>
+        {/* ── 4. Card 3: ACCOUNT SECURITY ── */}
+        <View style={styles.card}>
+          <Text style={styles.cardHeaderTitle}>ACCOUNT SECURITY</Text>
+
           <TouchableOpacity
             style={styles.actionRow}
             onPress={() => setChangePwVisible(true)}
             activeOpacity={0.7}
           >
-            <View style={styles.detailIconWrap}>
-              <Ionicons name="key-outline" size={17} color={colors.primary} />
+            <View style={styles.actionLeft}>
+              <View style={styles.actionIconWrapper}>
+                <Ionicons name="lock-closed-outline" size={18} color="#173B70" />
+              </View>
+              <Text style={styles.actionTitle}>Change Password</Text>
             </View>
-            <View style={styles.detailText}>
-              <Text style={styles.detailLabel}>Password</Text>
-              <Text style={styles.detailValue}>Change Password</Text>
+            <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+          </TouchableOpacity>
+
+          <View style={styles.divider} />
+
+          <TouchableOpacity
+            style={styles.actionRow}
+            onPress={() => setChangePhoneVisible(true)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.actionLeft}>
+              <View style={styles.actionIconWrapper}>
+                <Ionicons name="call-outline" size={18} color="#173B70" />
+              </View>
+              <Text style={styles.actionTitle}>Update Phone Number</Text>
             </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.textLight} />
+            <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+          </TouchableOpacity>
+
+          <View style={styles.divider} />
+
+          <TouchableOpacity
+            style={styles.actionRow}
+            onPress={() => setChangeEmailVisible(true)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.actionLeft}>
+              <View style={styles.actionIconWrapper}>
+                <Ionicons name="mail-outline" size={18} color="#173B70" />
+              </View>
+              <Text style={styles.actionTitle}>Update Email Address</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
           </TouchableOpacity>
         </View>
 
-        {/* Sign Out */}
-        <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut} activeOpacity={0.85}>
-          <Ionicons name="log-out-outline" size={18} color={colors.error} style={{ marginRight: 8 }} />
-          <Text style={styles.signOutText}>Log Out</Text>
-        </TouchableOpacity>
+        {/* ── 5. Card 4: PREFERENCES ── */}
+        <View style={styles.card}>
+          <Text style={styles.cardHeaderTitle}>PREFERENCES</Text>
 
-        <View style={{ height: 40 }} />
+          <View style={styles.preferenceRow}>
+            <View style={styles.actionLeft}>
+              <View style={styles.actionIconWrapper}>
+                <Ionicons name="notifications-outline" size={18} color="#173B70" />
+              </View>
+              <View>
+                <Text style={styles.actionTitle}>Activity Reminders</Text>
+                <Text style={styles.actionSubtitle}>Alerts for scheduled cleaning & services</Text>
+              </View>
+            </View>
+
+            <Switch
+              value={activityReminders}
+              onValueChange={handleToggleReminders}
+              trackColor={{ false: '#E2E8F0', true: '#173B70' }}
+              thumbColor={activityReminders ? '#D4AF37' : '#94A3B8'}
+            />
+          </View>
+        </View>
+
+        {/* ── 6. Log Out Button ── */}
+        <TouchableOpacity
+          style={styles.logoutButton}
+          onPress={handleSignOut}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="log-out-outline" size={20} color="#EF4444" style={{ marginRight: 8 }} />
+          <Text style={styles.logoutButtonText}>Log Out</Text>
+        </TouchableOpacity>
       </ScrollView>
 
-      {/* Change Password Modal */}
+      {/* ── Change Password Modal ── */}
       <Modal
         visible={changePwVisible}
         transparent
-        animationType="fade"
+        animationType="slide"
         onRequestClose={() => setChangePwVisible(false)}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Change Password</Text>
-              <TouchableOpacity
-                onPress={() => {
-                  setChangePwVisible(false);
-                  setCurrentPassword('');
-                  setNewPassword('');
-                }}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="close" size={22} color={colors.textMuted} />
-              </TouchableOpacity>
-            </View>
+            <Text style={styles.modalTitle}>Change Password</Text>
+            <Text style={styles.modalSubtitle}>Verify your current password to set a new one.</Text>
 
-            <Text style={styles.modalSubtitle}>
-              Please enter your current password and your new password.
-            </Text>
-
-            <PasswordField
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Current Password"
+              placeholderTextColor="#94A3B8"
+              secureTextEntry
               value={currentPassword}
               onChangeText={setCurrentPassword}
-              placeholder="Enter current password"
-              label="Current Password"
-              showStrengthBar={false}
-              showChecklist={false}
             />
 
-            <PasswordField
+            <TextInput
+              style={styles.modalInput}
+              placeholder="New Password (min 6 characters)"
+              placeholderTextColor="#94A3B8"
+              secureTextEntry
               value={newPassword}
               onChangeText={setNewPassword}
-              onValidityChange={setIsNewPwValid}
-              placeholder="At least 8 characters"
-              label="New Password"
             />
 
-            <TouchableOpacity
-              style={[
-                styles.modalSubmitButton,
-                (!currentPassword || !isNewPwValid || updatingPw) && styles.modalSubmitDisabled,
-              ]}
-              onPress={handleUpdatePassword}
-              disabled={!currentPassword || !isNewPwValid || updatingPw}
-              activeOpacity={0.85}
-            >
-              {updatingPw ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <Text style={styles.modalSubmitText}>Update Password</Text>
-              )}
-            </TouchableOpacity>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Confirm New Password"
+              placeholderTextColor="#94A3B8"
+              secureTextEntry
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+            />
+
+            <View style={styles.modalBtnRow}>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={() => setChangePwVisible(false)}
+                disabled={updatingPw}
+              >
+                <Text style={styles.modalCancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.modalSaveBtn}
+                onPress={handleUpdatePassword}
+                disabled={updatingPw}
+              >
+                {updatingPw ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.modalSaveBtnText}>Save</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Update Phone Modal ── */}
+      <Modal
+        visible={changePhoneVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setChangePhoneVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Update Phone Number</Text>
+            <Text style={styles.modalSubtitle}>Enter your active telephone number.</Text>
+
+            <TextInput
+              style={styles.modalInput}
+              placeholder="e.g. 08012345678"
+              placeholderTextColor="#94A3B8"
+              keyboardType="phone-pad"
+              value={newPhone}
+              onChangeText={setNewPhone}
+            />
+
+            <View style={styles.modalBtnRow}>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={() => setChangePhoneVisible(false)}
+                disabled={updatingPhone}
+              >
+                <Text style={styles.modalCancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.modalSaveBtn}
+                onPress={handleUpdatePhone}
+                disabled={updatingPhone}
+              >
+                {updatingPhone ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.modalSaveBtnText}>Update</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Update Email Modal ── */}
+      <Modal
+        visible={changeEmailVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setChangeEmailVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Update Email Address</Text>
+            <Text style={styles.modalSubtitle}>A confirmation link will be sent to verify your new email.</Text>
+
+            <TextInput
+              style={styles.modalInput}
+              placeholder="e.g. musician@godsministry.org"
+              placeholderTextColor="#94A3B8"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              value={newEmail}
+              onChangeText={setNewEmail}
+            />
+
+            <View style={styles.modalBtnRow}>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={() => setChangeEmailVisible(false)}
+                disabled={updatingEmail}
+              >
+                <Text style={styles.modalCancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.modalSaveBtn}
+                onPress={handleUpdateEmail}
+                disabled={updatingEmail}
+              >
+                {updatingEmail ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.modalSaveBtnText}>Send Link</Text>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -414,135 +693,290 @@ export default function ProfileScreen({ navigation }) {
   );
 }
 
-function DetailRow({ icon, label, value, last }) {
-  return (
-    <View style={[styles.detailRow, last && { borderBottomWidth: 0 }]}>
-      <View style={styles.detailIconWrap}>
-        <Ionicons name={icon} size={17} color={colors.textMuted} />
-      </View>
-      <View style={styles.detailText}>
-        <Text style={styles.detailLabel}>{label}</Text>
-        <Text style={styles.detailValue} numberOfLines={1}>{value || '—'}</Text>
-      </View>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFFFF' },
-  centered: { justifyContent: 'center', alignItems: 'center' },
-  watermark: {
-    position: 'absolute', width: 300, height: 300,
-    alignSelf: 'center', top: '25%', opacity: 0.04, zIndex: 0,
-  },
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: spacing.pagePadding, paddingVertical: 12,
-    backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: colors.border, zIndex: 10,
-  },
-  backButton: {
-    width: 38, height: 38, borderRadius: 8, borderWidth: 1,
-    borderColor: colors.border, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFFFFF',
-  },
-  headerCenter: { alignItems: 'center' },
-  headerTitle: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, letterSpacing: -0.2 },
-  headerSubtitle: { fontSize: 11, color: colors.textMuted, fontWeight: '500', marginTop: 1 },
-  scrollContent: { paddingHorizontal: spacing.pagePadding, paddingTop: 28, paddingBottom: 20 },
-
-  // Avatar
-  avatarSection: { alignItems: 'center', marginBottom: 28 },
-  avatarWrapper: { position: 'relative', marginBottom: 14 },
-  avatarCircle: {
-    width: 96, height: 96, borderRadius: 48,
-    backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center',
-    borderWidth: 3, borderColor: colors.primaryBorder,
-  },
-  avatarInitials: { color: '#FFFFFF', fontSize: 32, fontWeight: '700', letterSpacing: -1 },
-  cameraBadge: {
-    position: 'absolute', bottom: 2, right: 2, width: 28, height: 28,
-    borderRadius: 14, backgroundColor: colors.primary,
-    justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#FFFFFF',
-  },
-  avatarName: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, letterSpacing: -0.3, marginBottom: 6 },
-  instrumentBadge: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primaryLight,
-    borderWidth: 1, borderColor: colors.primaryBorder,
-    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, marginBottom: 10,
-  },
-  instrumentBadgeText: { fontSize: 12, fontWeight: '600', color: colors.primary },
-  changePhotoLink: { paddingVertical: 4, paddingHorizontal: 8 },
-  changePhotoLinkText: { fontSize: 13, fontWeight: '600', color: colors.primary, textDecorationLine: 'underline' },
-
-  // Details card
-  detailsCard: {
-    backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border,
-    borderRadius: 10, padding: 16, marginBottom: 14,
-  },
-  cardSectionLabel: { fontSize: 11, fontWeight: '700', color: colors.textMuted, letterSpacing: 0.7, marginBottom: 12 },
-  detailRow: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: colors.borderLight,
-  },
-  detailIconWrap: { width: 32, alignItems: 'center', marginRight: 10 },
-  detailText: { flex: 1 },
-  detailLabel: { fontSize: 11, fontWeight: '600', color: colors.textMuted, marginBottom: 1 },
-  detailValue: { fontSize: 14, fontWeight: '500', color: colors.textPrimary },
-
-  // Sign out
-  signOutButton: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: colors.errorBorder, borderRadius: 9,
-    paddingVertical: 14, marginTop: 6, backgroundColor: colors.errorBg,
-  },
-  signOutText: { fontSize: 14, fontWeight: '700', color: colors.error },
-  actionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-  },
-  modalOverlay: {
+  container: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: '#F8FAFC', // Crisp background for cards
+  },
+  centered: {
     justifyContent: 'center',
+    alignItems: 'center',
+  },
+  scrollContent: {
     paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: Platform.OS === 'ios' ? 120 : 96, // Clear bottom tab bar
   },
-  modalCard: {
-    backgroundColor: '#FFFFFF',
+
+  // 1. Header Styles
+  header: {
+    alignItems: 'center',
+    marginBottom: 24,
+    paddingTop: 8,
+  },
+  avatarContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    position: 'relative',
+    marginBottom: 14,
+    shadowColor: '#173B70',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.14,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  avatarImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+  },
+  avatarFallback: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#173B70',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#D4AF37',
+  },
+  avatarInitial: {
+    fontSize: 40,
+    fontFamily: fonts.serif,
+    color: '#FFFFFF',
+  },
+  cameraBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#173B70',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...shadows.card,
+  },
+  userName: {
+    fontSize: 24,
+    fontFamily: fonts.serif,
+    color: '#173B70',
+    textAlign: 'center',
+    letterSpacing: -0.2,
+  },
+  roleBadge: {
+    backgroundColor: '#173B70', // Navy Pill
+    paddingHorizontal: 14,
+    paddingVertical: 4,
     borderRadius: 12,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: colors.border,
+    marginTop: 6,
   },
-  modalHeader: {
+  roleBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontFamily: fonts.sansBold,
+    letterSpacing: 0.8,
+  },
+  changePhotoLink: {
+    color: '#173B70',
+    fontSize: 13,
+    fontFamily: fonts.sansSemiBold,
+    marginTop: 10,
+    textDecorationLine: 'underline',
+  },
+
+  // 2. Information Card Styles (Premium Style)
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    shadowColor: '#173B70',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  cardHeaderTitle: {
+    fontSize: 11,
+    fontFamily: fonts.sansBold,
+    color: '#64748B',
+    letterSpacing: 0.8,
+    marginBottom: 14,
+  },
+  infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    paddingVertical: 6,
+  },
+  infoLabel: {
+    fontSize: 13,
+    fontFamily: fonts.sansMedium,
+    color: '#64748B',
+  },
+  infoValue: {
+    fontSize: 14,
+    fontFamily: fonts.sansSemiBold,
+    color: '#0F172A',
+    maxWidth: '60%',
+    textAlign: 'right',
+  },
+  instrumentBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EEF4FF',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  instrumentBadgeText: {
+    fontSize: 13,
+    fontFamily: fonts.sansSemiBold,
+    color: '#173B70',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#F1F5F9',
+    marginVertical: 8,
+  },
+
+  // Action Rows
+  actionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  actionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  actionIconWrapper: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  actionTitle: {
+    fontSize: 14,
+    fontFamily: fonts.sansSemiBold,
+    color: '#0F172A',
+  },
+  actionSubtitle: {
+    fontSize: 12,
+    fontFamily: fonts.sans,
+    color: '#94A3B8',
+    marginTop: 1,
+  },
+
+  // Preference Row
+  preferenceRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 6,
+  },
+
+  // 3. Log Out Button
+  logoutButton: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#EF4444',
+    borderRadius: 14,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 10,
+    marginBottom: 20,
+    shadowColor: '#EF4444',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  logoutButtonText: {
+    color: '#EF4444',
+    fontSize: 15,
+    fontFamily: fonts.sansBold,
+  },
+
+  // Modals
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  modalCard: {
+    width: '100%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 22,
+    ...shadows.lifted,
   },
   modalTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: colors.textPrimary,
+    fontSize: 18,
+    fontFamily: fonts.sansBold,
+    color: '#0F172A',
+    marginBottom: 4,
   },
   modalSubtitle: {
     fontSize: 13,
-    color: colors.textMuted,
+    fontFamily: fonts.sans,
+    color: '#64748B',
     marginBottom: 16,
   },
-  modalSubmitButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 8,
-    paddingVertical: 14,
-    alignItems: 'center',
+  modalInput: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 14,
+    fontFamily: fonts.sans,
+    color: '#0F172A',
+    marginBottom: 12,
+  },
+  modalBtnRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
     marginTop: 8,
   },
-  modalSubmitDisabled: {
-    backgroundColor: '#9CA3AF',
-    opacity: 0.6,
+  modalCancelBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
+    marginRight: 10,
   },
-  modalSubmitText: {
+  modalCancelBtnText: {
+    color: '#64748B',
+    fontSize: 14,
+    fontFamily: fonts.sansSemiBold,
+  },
+  modalSaveBtn: {
+    backgroundColor: '#173B70',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 10,
+    minWidth: 70,
+    alignItems: 'center',
+  },
+  modalSaveBtnText: {
     color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '700',
+    fontFamily: fonts.sansBold,
   },
 });
