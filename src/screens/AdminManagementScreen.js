@@ -62,7 +62,7 @@ export default function AdminManagementScreen({ navigation }) {
   };
 
   const handleOpenAddModal = () => {
-    const randomTempPass = 'GGM' + Math.floor(100000 + Math.random() * 900000);
+    const randomTempPass = 'Ggm@' + Math.floor(100000 + Math.random() * 900000) + '!';
     setNewAdminName('');
     setNewAdminUsername('');
     setNewAdminPhone('');
@@ -78,6 +78,13 @@ export default function AdminManagementScreen({ navigation }) {
       return;
     }
 
+    const cleanPhone = newAdminPhone.replace(/\s+/g, '');
+    const NIGERIAN_PHONE_REGEX = /^(070|071|080|081|090|091)[0-9]{8}$/;
+    if (!NIGERIAN_PHONE_REGEX.test(cleanPhone)) {
+      Alert.alert('Invalid Phone Number', 'Please enter a valid 11-digit Nigerian phone number.');
+      return;
+    }
+
     setCreating(true);
     try {
       const authEmail = newAdminEmail.trim() || `${newAdminUsername.trim().toLowerCase()}@ggm-admin.internal`;
@@ -89,7 +96,7 @@ export default function AdminManagementScreen({ navigation }) {
           data: {
             full_name: newAdminName.trim(),
             username: newAdminUsername.trim().toLowerCase(),
-            phone: newAdminPhone.trim(),
+            phone: cleanPhone,
             role: 'admin',
           },
         },
@@ -105,7 +112,7 @@ export default function AdminManagementScreen({ navigation }) {
           id: newUserId,
           name: newAdminName.trim(),
           username: newAdminUsername.trim().toLowerCase(),
-          phone: newAdminPhone.trim(),
+          phone: cleanPhone,
           email: authEmail,
           role: 'admin',
           must_change_pw: true,
@@ -129,7 +136,7 @@ export default function AdminManagementScreen({ navigation }) {
       setCreatedCredentials({
         name: newAdminName,
         username: newAdminUsername,
-        phone: newAdminPhone,
+        phone: cleanPhone,
         tempPassword: tempPassword,
       });
 

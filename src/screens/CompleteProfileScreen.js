@@ -73,7 +73,7 @@ export default function CompleteProfileScreen({ navigation }) {
     setLoading(true);
     try {
       const { error: authError } = await supabase.auth.updateUser({
-        password: newPassword.trim(),
+        password: newPassword,
         email: email.trim(),
       });
       if (authError) throw authError;

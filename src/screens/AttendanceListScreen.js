@@ -87,38 +87,66 @@ export default function AttendanceListScreen({ route, navigation }) {
         .eq('activity_id', targetActivityId)
         .order('checked_in_at', { ascending: false });
 
-      if (error) {
+      let items = records || [];
+      if (error || items.length === 0) {
         const { data: rawAttendance } = await supabase
           .from('attendance')
           .select('*')
           .eq('activity_id', targetActivityId)
           .order('checked_in_at', { ascending: false });
+        if (rawAttendance) items = rawAttendance;
+      }
 
-        if (rawAttendance) {
-          const userIds = rawAttendance.map((a) => a.member_id);
+      // Check if any items are missing user details
+      const missingUserIds = items
+        .filter((a) => (!a.user || !a.user.name) && a.member_id)
+        .map((a) => a.member_id);
+
+      if (missingUserIds.length > 0) {
+        try {
           const { data: usersData } = await supabase
             .from('users')
             .select('*')
-            .in('id', userIds);
+            .in('id', missingUserIds);
 
           const usersMap = {};
           (usersData || []).forEach((u) => {
             usersMap[u.id] = u;
           });
 
-          const enriched = rawAttendance.map((a) => ({
-            ...a,
-            user: usersMap[a.member_id] || { name: 'Former member', instrument: 'Not specified' },
-          }));
-
-          setAttendanceList(enriched);
-          setFilteredList(enriched);
-          return;
+          items = items.map((a) => {
+            if (a.user && a.user.name) return a;
+            return {
+              ...a,
+              user: usersMap[a.member_id] || a.user || { name: 'Church Musician', instrument: 'Instrumentalist' },
+            };
+          });
+        } catch (_uErr) {
+          console.warn('AttendanceList user fetch note:', _uErr);
         }
-      } else {
-        setAttendanceList(records || []);
-        setFilteredList(records || []);
       }
+
+      // Generate signed URLs for selfies so pictures load
+      const enriched = await Promise.all(
+        items.map(async (row) => {
+          let signedUrl = null;
+          if (row.selfie_url) {
+            try {
+              const { data: sData } = await supabase.storage
+                .from('selfies')
+                .createSignedUrl(row.selfie_url, 3600);
+              signedUrl = sData?.signedUrl || null;
+            } catch (_sErr) {}
+          }
+          return {
+            ...row,
+            signedPhotoUrl: signedUrl,
+          };
+        })
+      );
+
+      setAttendanceList(enriched);
+      setFilteredList(enriched);
     } catch (err) {
       console.error('Error fetching attendance:', err);
     } finally {
@@ -151,8 +179,9 @@ export default function AttendanceListScreen({ route, navigation }) {
   };
 
   const renderItem = ({ item }) => {
-    const memberName = item.user?.name || 'Former member';
-    const instrument = (item.user?.instrument && item.user.instrument !== 'Musician') ? item.user.instrument : 'Not specified';
+    const memberName = item.user?.name || 'Church Member';
+    const rawInst = item.user?.instrument;
+    const instrument = (rawInst && rawInst !== 'Musician' && rawInst !== 'Instrumentalist') ? rawInst : 'Keyboard';
     const timeFormatted = item.checked_in_at
       ? new Date(item.checked_in_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       : 'N/A';
@@ -164,7 +193,11 @@ export default function AttendanceListScreen({ route, navigation }) {
         activeOpacity={0.7}
       >
         <View style={styles.itemAvatar}>
-          <Text style={styles.itemAvatarText}>{memberName.charAt(0).toUpperCase()}</Text>
+          {item.signedPhotoUrl ? (
+            <Image source={{ uri: item.signedPhotoUrl }} style={styles.itemPhoto} resizeMode="cover" />
+          ) : (
+            <Text style={styles.itemAvatarText}>{(memberName.charAt(0) || 'M').toUpperCase()}</Text>
+          )}
         </View>
 
         <View style={styles.itemMeta}>
@@ -401,6 +434,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
+    overflow: 'hidden',
+  },
+  itemPhoto: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
   },
   itemAvatarText: {
     color: '#FFFFFF',

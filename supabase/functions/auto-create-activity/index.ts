@@ -125,8 +125,8 @@ Deno.serve(async (req) => {
         closes_at:          closesAt,
         geofence_lat:       5.53808,
         geofence_lng:       5.75185,
-        geofence_radius_m:  200,
-        max_accuracy_m:     200,
+        geofence_radius_m:  400,
+        max_accuracy_m:     400,
         location_name:      "God's Grace Ministry Int'l Headquarters",
         location_address:   '58 Arubayi Street, Okumagba Layout, Warri, Delta State, Nigeria',
       })

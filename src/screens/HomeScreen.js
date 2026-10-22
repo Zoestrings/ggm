@@ -88,20 +88,30 @@ export default function HomeScreen({ navigation }) {
             .single();
 
           if (isMounted) {
-            if (profile) {
+            if (profile && profile.name) {
               setUserProfile(profile);
               await AsyncStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(profile));
             } else {
-              // Fallback to auth metadata if DB row is temporarily unreachable
+              // Fallback to auth metadata and self-heal into public.users
               const meta = currentUser.user_metadata || {};
-              setUserProfile({
+              const healedProfile = {
                 id: currentUser.id,
-                name: meta.full_name || 'Member',
-                phone: meta.phone || '',
-                email: currentUser.email || '',
-                instrument: meta.instrument || '',
-                role: meta.role || 'member',
-              });
+                name: meta.full_name || meta.name || currentUser.email?.split('@')[0] || 'Member',
+                phone: meta.phone || profile?.phone || '',
+                instrument: (meta.instrument && meta.instrument !== 'Musician')
+                  ? meta.instrument
+                  : ((profile?.instrument && profile.instrument !== 'Musician') ? profile.instrument : 'Keyboard'),
+                role: meta.role || profile?.role || 'member',
+                password_hash: 'managed_by_supabase_auth',
+              };
+              setUserProfile(healedProfile);
+              await AsyncStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(healedProfile));
+
+              try {
+                await supabase.from('users').upsert(healedProfile, { onConflict: 'id' });
+              } catch (_healErr) {
+                console.warn('HomeScreen profile healing note:', _healErr);
+              }
             }
             setLoadingUser(false);
           }

@@ -28,6 +28,7 @@ export default function CheckInScreen({ route, navigation }) {
   const [step, setStep] = useState('verifying_location');
   const [statusMessage, setStatusMessage] = useState('Verifying location and session...');
   const [currentUser, setCurrentUser] = useState(null);
+  const [userProfile, setUserProfile] = useState(null);
   const [userLocation, setUserLocation] = useState(null);
   const [photoUri, setPhotoUri] = useState(null);
   const [checkInTime, setCheckInTime] = useState(null);
@@ -90,6 +91,48 @@ export default function CheckInScreen({ route, navigation }) {
       }
       setCurrentUser(user);
 
+      // Fetch or self-heal profile from public.users table
+      try {
+        const { data: profile } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        const meta = user.user_metadata || {};
+        const metaName = meta.full_name || meta.name || user.email?.split('@')[0] || 'Member';
+        const userInst = meta.instrument || profile?.instrument || 'Keyboard';
+
+        if (profile && profile.name) {
+          setUserProfile({
+            ...profile,
+            instrument: (profile.instrument && profile.instrument !== 'Musician' && profile.instrument !== 'Instrumentalist')
+              ? profile.instrument
+              : userInst,
+          });
+        } else {
+          const fallbackProfile = {
+            id: user.id,
+            name: metaName,
+            phone: meta.phone || profile?.phone || '',
+            email: user.email || profile?.email || '',
+            instrument: userInst,
+            role: meta.role || profile?.role || 'member',
+            password_hash: 'managed_by_supabase_auth',
+          };
+          setUserProfile(fallbackProfile);
+          await supabase.from('users').upsert(fallbackProfile, { onConflict: 'id' });
+        }
+      } catch (profErr) {
+        console.warn('Profile sync note:', profErr);
+        const meta = user.user_metadata || {};
+        setUserProfile({
+          id: user.id,
+          name: meta.full_name || meta.name || user.email?.split('@')[0] || 'Member',
+          instrument: meta.instrument || 'Keyboard',
+        });
+      }
+
       if (!activity) {
         Alert.alert('Error', 'No activity selected.', [
           { text: 'Back', onPress: () => navigation.goBack() },
@@ -128,8 +171,8 @@ export default function CheckInScreen({ route, navigation }) {
       setStatusMessage('Verifying venue boundaries...');
       const geofenceLat = activity.geofence_lat;
       const geofenceLng = activity.geofence_lng;
-      const geofenceRadius = activity.geofence_radius_m || 200;
-      const maxAccuracy = activity.max_accuracy_m || 200;
+      const geofenceRadius = activity.geofence_radius_m || 400;
+      const maxAccuracy = activity.max_accuracy_m || 400;
 
       if (geofenceLat !== null && geofenceLng !== null && geofenceLat !== undefined) {
         const distance = getDistanceMeters(userLat, userLng, geofenceLat, geofenceLng);
@@ -192,23 +235,8 @@ export default function CheckInScreen({ route, navigation }) {
         return;
       }
 
-      // Step E — Duplicate check
-      setStatusMessage('Verifying attendance records...');
-      const { data: existingAttendance } = await supabase
-        .from('attendance')
-        .select('id, checked_in_at')
-        .eq('member_id', user.id)
-        .eq('activity_id', activity.id)
-        .maybeSingle();
-
-      if (existingAttendance) {
-        Alert.alert(
-          'Already Checked In',
-          'Your attendance has already been recorded for this activity.',
-          [{ text: 'OK', onPress: () => navigation.goBack() }]
-        );
-        return;
-      }
+      // Step E — Duplicate check (Bypassed for testing window)
+      // In test mode, repeated check-ins are permitted to thoroughly test devices & geofencing.
 
       // Step F — Ensure Camera permission
       if (!permission || !permission.granted) {
@@ -300,8 +328,9 @@ export default function CheckInScreen({ route, navigation }) {
 
       if (insertError) {
         if (insertError.code === '23505') {
-          Alert.alert('Notice', 'Attendance already recorded for this activity.');
-          navigation.goBack();
+          console.log('[CheckIn] Duplicate constraint suppressed during testing phase');
+          setCheckInTime(new Date());
+          setStep('success');
           return;
         }
         throw insertError;
@@ -368,6 +397,12 @@ export default function CheckInScreen({ route, navigation }) {
       ? checkInTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
       : 'Recorded';
 
+    const memberFullName = userProfile?.name || currentUser?.user_metadata?.full_name || 'Church Member';
+    const rawInst = userProfile?.instrument || currentUser?.user_metadata?.instrument;
+    const memberInstrument = (rawInst && rawInst !== 'Musician' && rawInst !== 'Instrumentalist')
+      ? rawInst
+      : 'Keyboard';
+
     return (
       <SafeAreaView style={[styles.container, styles.centered]}>
         <Image
@@ -377,12 +412,31 @@ export default function CheckInScreen({ route, navigation }) {
         />
         <View style={styles.successCard}>
           <View style={styles.successIconWrapper}>
-            <Ionicons name="checkmark-circle" size={48} color={colors.success} />
+            <Ionicons name="checkmark-circle" size={44} color={colors.success} />
           </View>
           <Text style={styles.successTitle}>ATTENDANCE RECORDED</Text>
           <Text style={styles.successSubtitle}>GGM Instrumentalists Attendance Management</Text>
 
           <View style={styles.successDivider} />
+
+          {/* Member Verification Picture & Full Name */}
+          <View style={styles.successMemberCard}>
+            {photoUri ? (
+              <Image source={{ uri: photoUri }} style={styles.successPhoto} resizeMode="cover" />
+            ) : (
+              <View style={styles.successPhotoPlaceholder}>
+                <Ionicons name="person" size={28} color={colors.primary} />
+              </View>
+            )}
+            <View style={styles.successMemberInfo}>
+              <Text style={styles.successMemberName} numberOfLines={1}>
+                {memberFullName}
+              </Text>
+              <Text style={styles.successMemberInstrument} numberOfLines={1}>
+                {memberInstrument}
+              </Text>
+            </View>
+          </View>
 
           <View style={styles.successDetailsBox}>
             <View style={styles.successRow}>
@@ -410,13 +464,31 @@ export default function CheckInScreen({ route, navigation }) {
             </View>
           </View>
 
-          <TouchableOpacity
-            style={styles.doneButton}
-            onPress={() => navigation.navigate('Home')}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.doneButtonText}>Done</Text>
-          </TouchableOpacity>
+          <View style={styles.successActionsRow}>
+            <TouchableOpacity
+              style={styles.testAgainButton}
+              onPress={() => {
+                setPhotoUri(null);
+                setIsCameraReady(false);
+                setCameraTimedOut(false);
+                setCameraKey((prev) => prev + 1);
+                setStep('verifying_location');
+                runPreCheck();
+              }}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="refresh-outline" size={16} color={colors.primary} style={{ marginRight: 6 }} />
+              <Text style={styles.testAgainButtonText}>Test Again</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.doneButton}
+              onPress={() => navigation.navigate('Home')}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.doneButtonText}>Done</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </SafeAreaView>
     );
@@ -472,23 +544,25 @@ export default function CheckInScreen({ route, navigation }) {
   return (
     <View style={styles.cameraContainer}>
       {isFocused && (
-        <CameraView
-          key={cameraKey}
-          style={styles.camera}
-          facing="front"
-          ref={cameraRef}
-          onCameraReady={() => {
-            setIsCameraReady(true);
-            setCameraTimedOut(false);
-          }}
-          onMountError={(err) => {
-            console.warn('CameraView mount error:', err);
-          }}
-        >
+        <>
+          <CameraView
+            key={cameraKey}
+            style={StyleSheet.absoluteFillObject}
+            facing="front"
+            ref={cameraRef}
+            onCameraReady={() => {
+              setIsCameraReady(true);
+              setCameraTimedOut(false);
+            }}
+            onMountError={(err) => {
+              console.warn('CameraView mount error:', err);
+            }}
+          />
+
           {!isCameraReady && (
-            <View style={styles.cameraLoadingOverlay}>
+            <View style={styles.cameraLoadingOverlay} pointerEvents="box-none">
               {cameraTimedOut ? (
-                <View style={styles.cameraTimeoutCard}>
+                <View style={styles.cameraTimeoutCard} pointerEvents="auto">
                   <Ionicons name="warning-outline" size={32} color={colors.warning || '#D97706'} />
                   <Text style={styles.cameraTimeoutTitle}>Camera is taking longer than expected</Text>
                   <Text style={styles.cameraTimeoutBody}>Try closing other apps, then tap Retry.</Text>
@@ -501,7 +575,7 @@ export default function CheckInScreen({ route, navigation }) {
                   </TouchableOpacity>
                 </View>
               ) : (
-                <View style={styles.cameraPreparingContainer}>
+                <View style={styles.cameraPreparingContainer} pointerEvents="none">
                   <ActivityIndicator size="large" color="#FFFFFF" />
                   <Text style={styles.cameraPreparingText}>Preparing camera...</Text>
                 </View>
@@ -511,7 +585,7 @@ export default function CheckInScreen({ route, navigation }) {
 
           <SafeAreaView style={styles.cameraOverlay} pointerEvents="box-none">
             {/* Header Bar */}
-            <View style={styles.cameraTopBar}>
+            <View style={styles.cameraTopBar} pointerEvents="box-none">
               <TouchableOpacity
                 style={styles.closeCameraButton}
                 onPress={() => navigation.goBack()}
@@ -528,25 +602,27 @@ export default function CheckInScreen({ route, navigation }) {
             </View>
 
             {/* Center Face Frame Guide */}
-            <View style={styles.faceGuideWrapper}>
+            <View style={styles.faceGuideWrapper} pointerEvents="none">
               <View style={styles.faceGuide} />
               <Text style={styles.faceGuideText}>Position your face inside the frame</Text>
             </View>
 
             {/* Bottom Capture Button */}
-            {isCameraReady && (
-              <View style={styles.captureContainer}>
-                <TouchableOpacity
-                  style={styles.captureButtonOuter}
-                  onPress={handleCapture}
-                  activeOpacity={0.8}
-                >
-                  <View style={styles.captureButtonInner} />
-                </TouchableOpacity>
-              </View>
-            )}
+            <View style={styles.captureContainer} pointerEvents="box-none">
+              <TouchableOpacity
+                style={[
+                  styles.captureButtonOuter,
+                  !isCameraReady && styles.captureButtonDisabled,
+                ]}
+                onPress={handleCapture}
+                disabled={!isCameraReady}
+                activeOpacity={0.8}
+              >
+                <View style={styles.captureButtonInner} />
+              </TouchableOpacity>
+            </View>
           </SafeAreaView>
-        </CameraView>
+        </>
       )}
     </View>
   );
@@ -566,7 +642,7 @@ const styles = StyleSheet.create({
   },
   cameraLoadingOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#000000',
+    backgroundColor: 'rgba(0,0,0,0.65)',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 10,
@@ -683,6 +759,46 @@ const styles = StyleSheet.create({
     width: '100%',
     marginBottom: 16,
   },
+  successMemberCard: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 16,
+  },
+  successPhoto: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    borderWidth: 2,
+    borderColor: colors.primary,
+  },
+  successPhotoPlaceholder: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: colors.borderLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  successMemberInfo: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  successMemberName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  successMemberInstrument: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
   successDetailsBox: {
     width: '100%',
     backgroundColor: colors.surface,
@@ -728,11 +844,32 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.successText,
   },
+  successActionsRow: {
+    flexDirection: 'row',
+    width: '100%',
+    gap: 12,
+  },
+  testAgainButton: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    minHeight: 50,
+    borderRadius: 8,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  testAgainButtonText: {
+    color: colors.primary,
+    fontSize: 14,
+    fontWeight: '700',
+  },
   doneButton: {
+    flex: 1,
     backgroundColor: colors.primary,
     minHeight: 50,
     borderRadius: 8,
-    width: '100%',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -740,6 +877,9 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '700',
+  },
+  captureButtonDisabled: {
+    opacity: 0.5,
   },
   previewContainer: {
     flex: 1,

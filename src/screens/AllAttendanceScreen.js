@@ -75,11 +75,57 @@ export default function AllAttendanceScreen({ navigation }) {
         .order('checked_in_at', { ascending: false })
         .limit(300);
 
-      if (error) {
-        console.warn('Error fetching all attendance:', error.message);
+      let items = records || [];
+      if (error || items.length === 0) {
+        const { data: rawAtt } = await supabase
+          .from('attendance')
+          .select(`
+            id,
+            member_id,
+            activity_id,
+            checked_in_at,
+            verification_status,
+            check_in_method,
+            selfie_url,
+            activity:activities!attendance_activity_id_fkey (
+              id,
+              name,
+              activity_date
+            )
+          `)
+          .order('checked_in_at', { ascending: false })
+          .limit(300);
+        if (rawAtt) items = rawAtt;
       }
 
-      setAttendanceRecords(records || []);
+      // Resolve user profiles for missing names
+      const missingUserIds = items
+        .filter((r) => (!r.user || !r.user.name) && r.member_id)
+        .map((r) => r.member_id);
+
+      if (missingUserIds.length > 0) {
+        try {
+          const { data: usersData } = await supabase
+            .from('users')
+            .select('id, name, phone, instrument, avatar_url')
+            .in('id', missingUserIds);
+          if (usersData) {
+            const usersMap = {};
+            usersData.forEach((u) => { usersMap[u.id] = u; });
+            items = items.map((r) => {
+              if (r.user && r.user.name) return r;
+              return {
+                ...r,
+                user: usersMap[r.member_id] || r.user || { name: 'Church Musician', instrument: 'Instrumentalist' },
+              };
+            });
+          }
+        } catch (_uErr) {
+          console.warn('AllAttendance users fallback note:', _uErr);
+        }
+      }
+
+      setAttendanceRecords(items);
     } catch (err) {
       console.error('AllAttendanceScreen load error:', err);
     } finally {

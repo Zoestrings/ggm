@@ -82,11 +82,45 @@ export default function SubAdminAttendanceScreen({ navigation, route }) {
         .eq('activity_id', act.id)
         .order('checked_in_at', { ascending: true });
 
-      if (error) {
-        console.warn('SubAdmin attendance fetch error:', error.message);
+      let rows = records || [];
+      if (error || rows.length === 0) {
+        const { data: rawAtt } = await supabase
+          .from('attendance')
+          .select('*')
+          .eq('activity_id', act.id)
+          .order('checked_in_at', { ascending: true });
+        if (rawAtt && rawAtt.length > 0) {
+          rows = rawAtt;
+        }
       }
 
-      const rows = records || [];
+      // Fetch user profiles for any rows missing member details
+      const missingUserIds = rows
+        .filter((r) => (!r.user || !r.user.name) && r.member_id)
+        .map((r) => r.member_id);
+
+      if (missingUserIds.length > 0) {
+        try {
+          const { data: usersData } = await supabase
+            .from('users')
+            .select('id, name, phone, email, instrument')
+            .in('id', missingUserIds);
+
+          if (usersData) {
+            const usersMap = {};
+            usersData.forEach((u) => { usersMap[u.id] = u; });
+            rows = rows.map((r) => {
+              if (r.user && r.user.name) return r;
+              return {
+                ...r,
+                user: usersMap[r.member_id] || r.user || null,
+              };
+            });
+          }
+        } catch (_uErr) {
+          console.warn('User directory fallback note:', _uErr);
+        }
+      }
 
       // 4. Generate signed URLs for selfies so photos load securely
       const enriched = await Promise.all(
@@ -134,8 +168,9 @@ export default function SubAdminAttendanceScreen({ navigation, route }) {
     : 'Today';
 
   const renderAttendanceRow = ({ item, index }) => {
-    const memberName = item.user?.name || 'Former member';
-    const instrument = item.user?.instrument || 'Instrumentalist';
+    const memberName = item.user?.name || (item.member_id === currentUser?.id ? (userProfile?.name || 'You') : 'Church Member');
+    const rawInst = item.user?.instrument;
+    const instrument = (rawInst && rawInst !== 'Musician' && rawInst !== 'Instrumentalist') ? rawInst : 'Keyboard';
     const timeFormatted = item.checked_in_at
       ? new Date(item.checked_in_at).toLocaleTimeString([], {
           hour: '2-digit',

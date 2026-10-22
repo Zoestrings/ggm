@@ -71,13 +71,30 @@ export default function AttendanceDetailScreen({ route, navigation }) {
             .eq('id', targetMemberId)
             .maybeSingle();
 
-          if (userProfile) {
+          if (userProfile && userProfile.name) {
             currentRecord = {
               ...currentRecord,
               users: userProfile,
             };
           } else {
-            console.warn(`[AttendanceDetail] Could not load user profile for member_id: ${targetMemberId}`);
+            // Check if this attendance is for the current authenticated user
+            const { data: { user: authUser } } = await supabase.auth.getUser();
+            if (authUser && authUser.id === targetMemberId) {
+              const meta = authUser.user_metadata || {};
+              const resolvedUser = {
+                id: authUser.id,
+                name: meta.full_name || meta.name || authUser.email?.split('@')[0] || 'Church Musician',
+                phone: meta.phone || 'Not available',
+                email: authUser.email || 'Not available',
+                instrument: meta.instrument || 'Instrumentalist',
+              };
+              currentRecord = { ...currentRecord, users: resolvedUser };
+              try {
+                await supabase.from('users').upsert(resolvedUser, { onConflict: 'id' });
+              } catch (_uErr) {}
+            } else if (record?.user && record.user.name) {
+              currentRecord = { ...currentRecord, users: record.user };
+            }
           }
         }
 
@@ -110,14 +127,13 @@ export default function AttendanceDetailScreen({ route, navigation }) {
   const rawUsers = attendance?.users;
   const userObj = Array.isArray(rawUsers)
     ? rawUsers[0]
-    : (rawUsers || (attendance?.user?.name !== 'Unknown Musician' ? attendance?.user : null) || {});
+    : (rawUsers || (attendance?.user?.name ? attendance.user : null) || record?.user || {});
 
-  const memberName = userObj?.name || 'Former member';
+  const memberName = userObj?.name || 'Church Member';
   const phone = userObj?.phone || 'Not available';
   const email = userObj?.email || 'Not available';
-  const instrument = (userObj?.instrument && userObj.instrument !== 'Musician')
-    ? userObj.instrument
-    : 'Not specified';
+  const rawInst = userObj?.instrument;
+  const instrument = (rawInst && rawInst !== 'Musician' && rawInst !== 'Instrumentalist') ? rawInst : 'Keyboard';
 
   const checkInDate = attendance?.checked_in_at ? new Date(attendance.checked_in_at) : null;
   const timeFormatted = checkInDate

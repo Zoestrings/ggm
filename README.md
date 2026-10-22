@@ -57,7 +57,7 @@ Access control is enforced directly at the database layer via PostgreSQL **Row L
 ## ⚡ Supabase Backend
 
 ### Database Migrations
-- `phase6_upgrade.sql`: Main upgrade migration. Contains:
+- `sql/phase6_upgrade.sql`: Main upgrade migration. Contains:
   - Role helper: `public.get_my_role()`.
   - Integrity triggers: `check_last_super_admin()` and `prevent_self_role_change()`.
   - Role management RPCs: `promote_to_sub_admin()`, `demote_to_member()`, `transfer_super_admin()`.
@@ -77,7 +77,7 @@ Access control is enforced directly at the database layer via PostgreSQL **Row L
    - Email verification code handler.
 
 ### Automated Cron Schedules
-See `cron_schedules.sql` for setup with `pg_cron` and `pg_net`.
+See `sql/cron_schedules.sql` for setup with `pg_cron` and `pg_net`.
 
 ---
 
@@ -85,7 +85,7 @@ See `cron_schedules.sql` for setup with `pg_cron` and `pg_net`.
 
 ### 1. Database Setup
 1. In your Supabase Dashboard, navigate to the **SQL Editor**.
-2. Run `phase6_upgrade.sql` to install all tables, functions, triggers, and RLS policies.
+2. Run `sql/phase6_upgrade.sql` to install all tables, functions, triggers, and RLS policies.
 3. Configure the password policy under **Authentication → Providers → Email** (Minimum 6 characters, containing letters and numbers).
 
 ### 2. Deploy Edge Functions

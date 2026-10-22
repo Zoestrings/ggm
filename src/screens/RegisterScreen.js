@@ -97,16 +97,23 @@ export default function RegisterScreen({ navigation }) {
 
   const handleRegisterSubmit = async () => {
     const trimmedName = fullName.trim();
-    if (!trimmedName || !password.trim()) {
+    if (!trimmedName || !password) {
       Alert.alert('Missing Fields', 'Please enter your full name and password.');
       return;
     }
-    if (!email.trim() && !phone.trim()) {
-      Alert.alert('Missing Fields', 'Please provide an email address or phone number.');
+
+    const cleanPhone = phone.replace(/\s+/g, '');
+    const NIGERIAN_PHONE_REGEX = /^(070|071|080|081|090|091)[0-9]{8}$/;
+    if (!cleanPhone || !NIGERIAN_PHONE_REGEX.test(cleanPhone)) {
+      Alert.alert('Invalid Phone Number', 'Please enter a valid 11-digit Nigerian phone number.');
       return;
     }
+
     if (!isPasswordValid) {
-      Alert.alert('Incomplete Password', 'Please ensure your password has at least 6 characters, including letters and numbers.');
+      Alert.alert(
+        'Incomplete Password',
+        'Please ensure your password satisfies all 5 security requirements.'
+      );
       return;
     }
 
@@ -167,7 +174,8 @@ export default function RegisterScreen({ navigation }) {
   };
 
   const completeRegistration = async (isEmailVerified = false) => {
-    const authEmail = email.trim() || `${phone.replace(/[^0-9]/g, '')}@instrumentalists.local`;
+    const cleanPhone = phone.replace(/\s+/g, '');
+    const authEmail = email.trim() || `${cleanPhone}@instrumentalists.local`;
 
     // 1. Sign up in Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -176,7 +184,7 @@ export default function RegisterScreen({ navigation }) {
       options: {
         data: {
           full_name: fullName.trim(),
-          phone: phone.trim(),
+          phone: cleanPhone,
           instrument: instrument,
           role: 'member',
           email_verified: isEmailVerified,
@@ -193,7 +201,7 @@ export default function RegisterScreen({ navigation }) {
       const profilePayload = {
         id: userId,
         name: fullName.trim(),
-        phone: phone.trim(),
+        phone: cleanPhone,
         email: authEmail,
         instrument: instrument,
         role: 'member',
@@ -339,8 +347,9 @@ export default function RegisterScreen({ navigation }) {
                     placeholder="e.g. 08012345678"
                     placeholderTextColor={colors.textLight}
                     value={phone}
-                    onChangeText={setPhone}
+                    onChangeText={(val) => setPhone(val.replace(/\s+/g, ''))}
                     keyboardType="phone-pad"
+                    maxLength={11}
                   />
                 </View>
               </View>
@@ -400,7 +409,7 @@ export default function RegisterScreen({ navigation }) {
                 value={password}
                 onChangeText={setPassword}
                 onValidityChange={setIsPasswordValid}
-                placeholder="At least 6 characters"
+                placeholder="At least 8 characters"
                 label="Password"
               />
 
@@ -582,7 +591,8 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   buttonDisabled: {
-    opacity: 0.7,
+    backgroundColor: '#9CA3AF',
+    opacity: 0.6,
   },
   primaryButtonText: {
     color: '#FFFFFF',

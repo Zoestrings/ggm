@@ -95,10 +95,12 @@ export default function SuperAdminDashboardScreen({ navigation }) {
             if (isMounted) setCheckedInCount(attCount || 0);
 
             // Latest 5 check-ins preview
-            const { data: previewAtt } = await supabase
+            let previewRows = [];
+            const { data: previewAtt, error: previewErr } = await supabase
               .from('attendance')
               .select(`
                 id,
+                member_id,
                 checked_in_at,
                 selfie_url,
                 user:users!attendance_member_id_fkey (
@@ -111,7 +113,39 @@ export default function SuperAdminDashboardScreen({ navigation }) {
               .order('checked_in_at', { ascending: false })
               .limit(5);
 
-            if (isMounted) setLatestCheckins(previewAtt || []);
+            previewRows = previewAtt || [];
+            if (previewErr || previewRows.length === 0) {
+              const { data: directPreview } = await supabase
+                .from('attendance')
+                .select('id, member_id, checked_in_at, selfie_url')
+                .eq('activity_id', currentAct.id)
+                .order('checked_in_at', { ascending: false })
+                .limit(5);
+              if (directPreview) previewRows = directPreview;
+            }
+
+            const missingIds = previewRows
+              .filter((r) => (!r.user || !r.user.name) && r.member_id)
+              .map((r) => r.member_id);
+
+            if (missingIds.length > 0) {
+              try {
+                const { data: uData } = await supabase
+                  .from('users')
+                  .select('id, name, instrument')
+                  .in('id', missingIds);
+                if (uData) {
+                  const uMap = {};
+                  uData.forEach((u) => { uMap[u.id] = u; });
+                  previewRows = previewRows.map((r) => ({
+                    ...r,
+                    user: r.user?.name ? r.user : (uMap[r.member_id] || { name: 'Church Musician', instrument: 'Instrumentalist' }),
+                  }));
+                }
+              } catch (_uErr) {}
+            }
+
+            if (isMounted) setLatestCheckins(previewRows);
 
             // Check if PDF report exists
             try {

@@ -171,12 +171,12 @@ export default function ProfileScreen({ navigation }) {
   };
 
   const handleUpdatePassword = async () => {
-    if (!currentPassword.trim()) {
+    if (!currentPassword) {
       Alert.alert('Required', 'Please enter your current password.');
       return;
     }
     if (!isNewPwValid) {
-      Alert.alert('Incomplete Password', 'Please ensure your new password satisfies all required criteria.');
+      Alert.alert('Incomplete Password', 'Please ensure your new password satisfies all 5 security requirements.');
       return;
     }
 
@@ -388,17 +388,17 @@ export default function ProfileScreen({ navigation }) {
               value={newPassword}
               onChangeText={setNewPassword}
               onValidityChange={setIsNewPwValid}
-              placeholder="Enter new password"
+              placeholder="At least 8 characters"
               label="New Password"
             />
 
             <TouchableOpacity
               style={[
                 styles.modalSubmitButton,
-                (!currentPassword.trim() || !isNewPwValid || updatingPw) && styles.modalSubmitDisabled,
+                (!currentPassword || !isNewPwValid || updatingPw) && styles.modalSubmitDisabled,
               ]}
               onPress={handleUpdatePassword}
-              disabled={!currentPassword.trim() || !isNewPwValid || updatingPw}
+              disabled={!currentPassword || !isNewPwValid || updatingPw}
               activeOpacity={0.85}
             >
               {updatingPw ? (
@@ -537,7 +537,8 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   modalSubmitDisabled: {
-    opacity: 0.5,
+    backgroundColor: '#9CA3AF',
+    opacity: 0.6,
   },
   modalSubmitText: {
     color: '#FFFFFF',

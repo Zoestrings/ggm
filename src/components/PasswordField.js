@@ -34,7 +34,7 @@ export default function PasswordField({
   value = '',
   onChangeText,
   onValidityChange,
-  placeholder = 'Enter password',
+  placeholder = 'At least 8 characters',
   label = 'Password',
   showStrengthBar = true,
   showChecklist = true,
@@ -43,36 +43,34 @@ export default function PasswordField({
 }) {
   const [showPassword, setShowPassword] = useState(false);
 
-  // Criteria evaluation
-  const hasMinLength = value.length >= 6;
-  const hasLowercase = /[a-z]/.test(value);
+  // Criteria evaluation (all 5 required)
+  const hasMinLength = value.length >= 8;
   const hasUppercase = /[A-Z]/.test(value);
+  const hasLowercase = /[a-z]/.test(value);
   const hasNumber = /[0-9]/.test(value);
   const hasSpecial = /[^a-zA-Z0-9]/.test(value);
-  const hasGoodLength = value.length >= 8;
 
-  // Required rules pass
-  const isRequiredValid = hasMinLength && hasLowercase && hasNumber;
+  // All 5 rules are strictly required
+  const isValid = hasMinLength && hasUppercase && hasLowercase && hasNumber && hasSpecial;
 
-  // Strength score out of 6
+  // Strength score out of 5
   let score = 0;
   if (hasMinLength) score++;
-  if (hasLowercase) score++;
   if (hasUppercase) score++;
+  if (hasLowercase) score++;
   if (hasNumber) score++;
   if (hasSpecial) score++;
-  if (hasGoodLength) score++;
 
   useEffect(() => {
     if (onValidityChange) {
-      onValidityChange(isRequiredValid);
+      onValidityChange(isValid);
     }
-  }, [isRequiredValid, onValidityChange]);
+  }, [isValid, onValidityChange]);
 
   // Determine strength label and color
   let strengthLabel = 'Weak';
   let strengthColor = '#DC2626'; // Red
-  let strengthPercent = '20%';
+  let strengthPercent = '33%';
 
   if (value.length === 0) {
     strengthLabel = 'None';
@@ -81,15 +79,11 @@ export default function PasswordField({
   } else if (score <= 2) {
     strengthLabel = 'Weak';
     strengthColor = '#DC2626';
-    strengthPercent = '25%';
-  } else if (score === 3) {
+    strengthPercent = '33%';
+  } else if (score <= 4) {
     strengthLabel = 'Fair';
-    strengthColor = '#D97706'; // Orange
-    strengthPercent = '50%';
-  } else if (score === 4) {
-    strengthLabel = 'Good';
-    strengthColor = '#CA8A04'; // Yellow
-    strengthPercent = '75%';
+    strengthColor = '#EA580C'; // Orange
+    strengthPercent = '66%';
   } else {
     strengthLabel = 'Strong';
     strengthColor = '#16A34A'; // Green
@@ -97,11 +91,11 @@ export default function PasswordField({
   }
 
   const checklistItems = [
-    { label: 'At least 6 characters', valid: hasMinLength, required: true },
-    { label: 'Contains a lowercase letter', valid: hasLowercase, required: true },
-    { label: 'Contains an uppercase letter', valid: hasUppercase, required: false },
-    { label: 'Contains a number', valid: hasNumber, required: true },
-    { label: 'Contains a special character', valid: hasSpecial, required: false },
+    { label: 'At least 8 characters', valid: hasMinLength },
+    { label: 'One uppercase letter', valid: hasUppercase },
+    { label: 'One lowercase letter', valid: hasLowercase },
+    { label: 'One number', valid: hasNumber },
+    { label: 'One special character (e.g. !@#$%^&*)', valid: hasSpecial },
   ];
 
   return (
@@ -175,7 +169,7 @@ export default function PasswordField({
                   item.valid && styles.checklistLabelPassed,
                 ]}
               >
-                {item.label} {!item.required ? '(optional)' : ''}
+                {item.label}
               </Text>
             </View>
           ))}

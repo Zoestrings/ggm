@@ -25,18 +25,27 @@ export default function LoginScreen({ navigation }) {
   const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async () => {
-    if (!identifier.trim() || !password.trim()) {
+    const trimmedId = identifier.trim();
+    if (!trimmedId || !password) {
       Alert.alert('Missing Details', 'Please enter your phone number or email and password.');
       return;
     }
 
+    const isEmail = trimmedId.includes('@');
+    let authEmail = trimmedId;
+
+    if (!isEmail) {
+      const cleanPhone = trimmedId.replace(/\s+/g, '');
+      const NIGERIAN_PHONE_REGEX = /^(070|071|080|081|090|091)[0-9]{8}$/;
+      if (!NIGERIAN_PHONE_REGEX.test(cleanPhone)) {
+        Alert.alert('Invalid Phone Number', 'Please enter a valid 11-digit Nigerian phone number.');
+        return;
+      }
+      authEmail = `${cleanPhone}@instrumentalists.local`;
+    }
+
     setLoading(true);
     try {
-      const isEmail = identifier.includes('@');
-      const authEmail = isEmail
-        ? identifier.trim()
-        : `${identifier.replace(/[^0-9]/g, '')}@instrumentalists.local`;
-
       const { data, error } = await supabase.auth.signInWithPassword({
         email: authEmail,
         password: password,
@@ -44,16 +53,32 @@ export default function LoginScreen({ navigation }) {
 
       if (error) throw error;
 
-      // Cache fresh profile from public.users table immediately
+      // Cache and self-heal fresh profile from public.users table immediately
       if (data?.user?.id) {
         try {
           const { data: profile } = await supabase
             .from('users')
             .select('*')
             .eq('id', data.user.id)
-            .single();
-          if (profile) {
+            .maybeSingle();
+
+          if (profile && profile.name) {
             await AsyncStorage.setItem('@ggm_user_profile', JSON.stringify(profile));
+          } else {
+            const meta = data.user.user_metadata || {};
+            const healed = {
+              id: data.user.id,
+              name: meta.full_name || meta.name || data.user.email?.split('@')[0] || 'Member',
+              phone: meta.phone || profile?.phone || '',
+              email: data.user.email || profile?.email || '',
+              instrument: (meta.instrument && meta.instrument !== 'Musician')
+                ? meta.instrument
+                : ((profile?.instrument && profile.instrument !== 'Musician') ? profile.instrument : 'Keyboard'),
+              role: meta.role || profile?.role || 'member',
+              password_hash: 'managed_by_supabase_auth',
+            };
+            await supabase.from('users').upsert(healed, { onConflict: 'id' });
+            await AsyncStorage.setItem('@ggm_user_profile', JSON.stringify(healed));
           }
         } catch (_cacheErr) {
           // Non-blocking
