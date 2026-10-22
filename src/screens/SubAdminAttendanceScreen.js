@@ -1,42 +1,77 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   StyleSheet,
   Text,
   View,
   FlatList,
+  TextInput,
   TouchableOpacity,
   ActivityIndicator,
   Image,
   RefreshControl,
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
-import { colors, spacing } from '../theme';
+import { colors, fonts, shadows, spacing } from '../theme';
 
 export default function SubAdminAttendanceScreen({ navigation, route }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
   const [targetActivity, setTargetActivity] = useState(route.params?.activity || null);
   const [attendanceRecords, setAttendanceRecords] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  // 1. Initial Load
   useEffect(() => {
-    loadData();
+    loadData(true);
   }, []);
 
-  const loadData = async () => {
+  // 2. Real-time Subscription for Live Updates on Cleaning Day
+  useEffect(() => {
+    if (!targetActivity?.id) return;
+
+    const channel = supabase
+      .channel(`subadmin-live-attendance-${targetActivity.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'attendance',
+          filter: `activity_id=eq.${targetActivity.id}`,
+        },
+        () => {
+          // Instantly refresh list when any check-in occurs
+          loadData(false);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [targetActivity?.id]);
+
+  const loadData = async (showLoader = false) => {
     try {
-      setLoading(true);
-      // 1. Get current auth user & profile
-      const { data: { user } } = await supabase.auth.getUser();
+      if (showLoader) setLoading(true);
+
+      // 1. Verify current auth user
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
       if (!user) {
         navigation.replace('Login');
         return;
       }
       setCurrentUser(user);
 
+      // 2. Fetch User Profile
       const { data: profile } = await supabase
         .from('users')
         .select('*')
@@ -44,7 +79,7 @@ export default function SubAdminAttendanceScreen({ navigation, route }) {
         .single();
       setUserProfile(profile);
 
-      // 2. Identify target activity: either passed, currently open, or latest non-finalized / recent within 30 days
+      // 3. Determine target activity
       let act = targetActivity;
       if (!act) {
         const { data: acts } = await supabase
@@ -64,7 +99,7 @@ export default function SubAdminAttendanceScreen({ navigation, route }) {
         return;
       }
 
-      // 3. Fetch attendance for this activity (RLS enforces sub_admin reading current/recent activity only)
+      // 4. Fetch attendance records for this activity
       const { data: records, error } = await supabase
         .from('attendance')
         .select(`
@@ -80,7 +115,7 @@ export default function SubAdminAttendanceScreen({ navigation, route }) {
           )
         `)
         .eq('activity_id', act.id)
-        .order('checked_in_at', { ascending: true });
+        .order('checked_in_at', { ascending: false });
 
       let rows = records || [];
       if (error || rows.length === 0) {
@@ -88,13 +123,13 @@ export default function SubAdminAttendanceScreen({ navigation, route }) {
           .from('attendance')
           .select('*')
           .eq('activity_id', act.id)
-          .order('checked_in_at', { ascending: true });
+          .order('checked_in_at', { ascending: false });
         if (rawAtt && rawAtt.length > 0) {
           rows = rawAtt;
         }
       }
 
-      // Fetch user profiles for any rows missing member details
+      // Fallback for missing member names
       const missingUserIds = rows
         .filter((r) => (!r.user || !r.user.name) && r.member_id)
         .map((r) => r.member_id);
@@ -108,7 +143,9 @@ export default function SubAdminAttendanceScreen({ navigation, route }) {
 
           if (usersData) {
             const usersMap = {};
-            usersData.forEach((u) => { usersMap[u.id] = u; });
+            usersData.forEach((u) => {
+              usersMap[u.id] = u;
+            });
             rows = rows.map((r) => {
               if (r.user && r.user.name) return r;
               return {
@@ -118,11 +155,11 @@ export default function SubAdminAttendanceScreen({ navigation, route }) {
             });
           }
         } catch (_uErr) {
-          console.warn('User directory fallback note:', _uErr);
+          console.warn('SubAdminAttendance fallback error:', _uErr);
         }
       }
 
-      // 4. Generate signed URLs for selfies so photos load securely
+      // 5. Generate secure signed URLs for member selfies
       const enriched = await Promise.all(
         rows.map(async (row) => {
           let signedUrl = null;
@@ -145,51 +182,82 @@ export default function SubAdminAttendanceScreen({ navigation, route }) {
 
       setAttendanceRecords(enriched);
     } catch (err) {
-      console.error('SubAdminAttendanceScreen error:', err);
+      console.error('SubAdminAttendanceScreen loadData error:', err);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
 
-  const onRefresh = () => {
+  const onRefresh = useCallback(() => {
     setRefreshing(true);
-    loadData();
+    loadData(false);
+  }, [targetActivity?.id]);
+
+  // Format initials fallback
+  const getInitials = (name) => {
+    if (!name) return 'GM';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   };
 
-  const adminName = userProfile?.name || 'Officer';
-  const activityDateFormatted = targetActivity?.activity_date
-    ? new Date(targetActivity.activity_date).toLocaleDateString([], {
-        weekday: 'short',
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      })
-    : 'Today';
+  // Format 12-hour check-in time (e.g. "6:42 AM")
+  const formatTime = (isoString) => {
+    if (!isoString) return '—';
+    try {
+      const date = new Date(isoString);
+      return date.toLocaleTimeString([], {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+      });
+    } catch (_e) {
+      return '—';
+    }
+  };
 
-  const renderAttendanceRow = ({ item, index }) => {
-    const memberName = item.user?.name || (item.member_id === currentUser?.id ? (userProfile?.name || 'You') : 'Church Member');
-    const rawInst = item.user?.instrument;
-    const instrument = (rawInst && rawInst !== 'Musician' && rawInst !== 'Instrumentalist') ? rawInst : 'Keyboard';
-    const timeFormatted = item.checked_in_at
-      ? new Date(item.checked_in_at).toLocaleTimeString([], {
-          hour: '2-digit',
-          minute: '2-digit',
-        })
-      : '—';
+  // Real-time filtering by Member Name or Instrument
+  const filteredRecords = useMemo(() => {
+    if (!searchQuery.trim()) return attendanceRecords;
+    const query = searchQuery.toLowerCase().trim();
+    return attendanceRecords.filter((record) => {
+      const memberName = (record.user?.name || '').toLowerCase();
+      const instrument = (record.user?.instrument || '').toLowerCase();
+      return memberName.includes(query) || instrument.includes(query);
+    });
+  }, [attendanceRecords, searchQuery]);
+
+  // Render individual member attendance card
+  const renderItem = ({ item }) => {
+    const memberName =
+      item.user?.name ||
+      (item.member_id === currentUser?.id ? userProfile?.name || 'You' : 'Church Member');
+    const rawInstrument = item.user?.instrument;
+    const instrument =
+      rawInstrument && rawInstrument !== 'Musician' && rawInstrument !== 'Instrumentalist'
+        ? rawInstrument
+        : 'Instrumentalist';
+    const checkInTime = formatTime(item.checked_in_at);
 
     return (
-      <View style={styles.recordCard}>
-        <View style={styles.photoContainer}>
+      <View style={styles.card}>
+        {/* Left: Circular Avatar (Photo or Initials) */}
+        <View style={styles.avatarContainer}>
           {item.signedPhotoUrl ? (
-            <Image source={{ uri: item.signedPhotoUrl }} style={styles.photo} resizeMode="cover" />
+            <Image
+              source={{ uri: item.signedPhotoUrl }}
+              style={styles.avatarImage}
+              resizeMode="cover"
+            />
           ) : (
-            <View style={styles.photoPlaceholder}>
-              <Ionicons name="person" size={20} color={colors.textLight} />
+            <View style={styles.initialsCircle}>
+              <Text style={styles.initialsText}>{getInitials(memberName)}</Text>
             </View>
           )}
         </View>
 
+        {/* Middle: Member Name (Navy, Bold) & Instrument (Gray) */}
         <View style={styles.infoCol}>
           <Text style={styles.memberName} numberOfLines={1}>
             {memberName}
@@ -199,348 +267,355 @@ export default function SubAdminAttendanceScreen({ navigation, route }) {
           </Text>
         </View>
 
-        <View style={styles.timeBadge}>
-          <Ionicons name="time-outline" size={13} color={colors.textMuted} style={{ marginRight: 4 }} />
-          <Text style={styles.timeText}>{timeFormatted}</Text>
+        {/* Right: Check-in Time & Green PRESENT Badge */}
+        <View style={styles.statusCol}>
+          <Text style={styles.timeText}>{checkInTime}</Text>
+          <View style={styles.presentBadge}>
+            <Text style={styles.presentBadgeText}>PRESENT</Text>
+          </View>
         </View>
       </View>
     );
   };
 
+  const activityName = targetActivity?.name || 'Cleaning & Service';
+
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      {/* Background Watermark */}
-      <Image
-        source={require('../../assets/logo.png')}
-        style={styles.watermark}
-        resizeMode="contain"
-      />
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#173B70" />
 
-      {/* Top Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="arrow-back-outline" size={22} color={colors.textSecondary} />
-        </TouchableOpacity>
-        <View style={styles.headerTitleWrap}>
-          <Text style={styles.headerTitle}>Attendance List</Text>
-          <Text style={styles.headerSubtitle}>Sub-Admin View Only</Text>
-        </View>
-        <View style={styles.subAdminBadge}>
-          <Text style={styles.subAdminBadgeText}>VIEW ONLY</Text>
+      {/* 1. The Navy Hero Header */}
+      <View style={styles.heroHeader}>
+        <SafeAreaView edges={['top', 'left', 'right']}>
+          {/* Top Bar: Back Button, Title, Live Indicator */}
+          <View style={styles.topBar}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => navigation.goBack()}
+              activeOpacity={0.7}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
+            </TouchableOpacity>
+
+            <View style={styles.titleWrap}>
+              <Text style={styles.heroTitle}>Live Attendance</Text>
+              <Text style={styles.heroSubtitle} numberOfLines={1}>
+                {activityName}
+              </Text>
+            </View>
+
+            <View style={styles.liveIndicatorBadge}>
+              <View style={styles.liveDot} />
+              <Text style={styles.liveIndicatorText}>LIVE</Text>
+            </View>
+          </View>
+
+          {/* Quick Stat: Large White Number & Label */}
+          <View style={styles.quickStatContainer}>
+            <Text style={styles.quickStatNumber}>{attendanceRecords.length}</Text>
+            <Text style={styles.quickStatLabel}>Total Present Today</Text>
+          </View>
+        </SafeAreaView>
+      </View>
+
+      {/* 2. The Floating Search Bar (overlaps Navy Header) */}
+      <View style={styles.searchBarWrapper}>
+        <View style={styles.searchBar}>
+          <Ionicons name="search" size={20} color="#94A3B8" style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search member name..."
+            placeholderTextColor="#94A3B8"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            autoCapitalize="none"
+            autoCorrect={false}
+            clearButtonMode="while-editing"
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity
+              onPress={() => setSearchQuery('')}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons name="close-circle" size={18} color="#94A3B8" />
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
-      {/* Activity Context Banner */}
-      <View style={styles.banner}>
-        <Text style={styles.welcomeText}>Welcome, {adminName}</Text>
-        <View style={styles.dateRow}>
-          <Ionicons name="calendar-outline" size={15} color={colors.primary} style={{ marginRight: 6 }} />
-          <Text style={styles.dateText}>
-            {targetActivity?.name || 'Departmental Session'} • {activityDateFormatted}
-          </Text>
-        </View>
-      </View>
-
+      {/* 3. The Attendance List (Strict Read-Only) */}
       {loading && !refreshing ? (
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading today's attendance...</Text>
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color="#173B70" />
+          <Text style={styles.loadingText}>Syncing live attendance...</Text>
         </View>
       ) : (
         <FlatList
-          data={attendanceRecords}
+          data={filteredRecords}
           keyExtractor={(item) => item.id}
-          renderItem={renderAttendanceRow}
+          renderItem={renderItem}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              colors={[colors.primary]}
-              tintColor={colors.primary}
+              colors={['#173B70']}
+              tintColor="#173B70"
             />
-          }
-          ListHeaderComponent={
-            <View style={styles.listHeaderRow}>
-              <Text style={styles.sectionLabel}>PEOPLE WHO CAME TODAY</Text>
-              <Text style={styles.countBadge}>{attendanceRecords.length}</Text>
-            </View>
           }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Ionicons
-                name={!targetActivity ? "calendar-outline" : "people-outline"}
-                size={48}
-                color={colors.borderDark}
-              />
+              <Ionicons name="time-outline" size={56} color="#94A3B8" />
               <Text style={styles.emptyTitle}>
-                {!targetActivity ? "No Active Session" : "No Check-Ins Yet"}
+                {searchQuery ? 'No Results Found' : 'No Check-Ins Yet'}
               </Text>
               <Text style={styles.emptySubtitle}>
-                {!targetActivity
-                  ? "There is no scheduled session open right now, nor recent activity within the last 30 days."
-                  : "Members will appear here with photos as they check in at church."}
+                {searchQuery
+                  ? `No checked-in member matching "${searchQuery}".`
+                  : 'No check-ins yet. The list will update in real-time.'}
               </Text>
             </View>
           }
-          ListFooterComponent={
-            attendanceRecords.length > 0 ? (
-              <View style={styles.footerNoteBox}>
-                <Ionicons name="information-circle-outline" size={16} color={colors.textMuted} style={{ marginRight: 6 }} />
-                <Text style={styles.footerNoteText}>
-                  This list is read-only for yearly compilation and verification.
-                </Text>
-              </View>
-            ) : null
-          }
         />
       )}
-
-      {/* Bottom Summary Bar */}
-      <View style={styles.bottomBar}>
-        <Text style={styles.bottomBarLabel}>Total Attended Today:</Text>
-        <Text style={styles.bottomBarCount}>{attendanceRecords.length}</Text>
-      </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F8FAFC',
   },
-  watermark: {
-    position: 'absolute',
-    width: 320,
-    height: 320,
-    alignSelf: 'center',
-    top: '28%',
-    opacity: 0.04,
-    zIndex: 0,
+
+  // 1. Navy Hero Header
+  heroHeader: {
+    backgroundColor: '#173B70',
+    paddingHorizontal: 20,
+    paddingBottom: 36, // Space for the floating search bar overlap
   },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 13,
-    color: colors.textMuted,
-  },
-  header: {
+  topBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.pagePadding,
-    paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingTop: 8,
+    paddingBottom: 16,
   },
   backButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    marginRight: 14,
   },
-  headerTitleWrap: {
+  titleWrap: {
     flex: 1,
-    marginLeft: 12,
   },
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.textPrimary,
+  heroTitle: {
+    fontSize: 22,
+    fontFamily: fonts.serif,
+    color: '#FFFFFF',
+    letterSpacing: -0.3,
   },
-  headerSubtitle: {
-    fontSize: 11,
-    color: colors.textMuted,
-    fontWeight: '500',
-  },
-  subAdminBadge: {
-    backgroundColor: colors.surfaceAlt,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  subAdminBadgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: colors.textSecondary,
-    letterSpacing: 0.5,
-  },
-  banner: {
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.pagePadding,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
-  },
-  welcomeText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    letterSpacing: -0.2,
-  },
-  dateRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  dateText: {
+  heroSubtitle: {
     fontSize: 13,
-    color: colors.textSecondary,
-    fontWeight: '500',
+    fontFamily: fonts.sans,
+    color: '#94A3B8',
+    marginTop: 2,
   },
-  listContent: {
-    paddingHorizontal: spacing.pagePadding,
-    paddingTop: 16,
-    paddingBottom: 24,
-  },
-  listHeaderRow: {
+  liveIndicatorBadge: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    backgroundColor: 'rgba(16, 185, 129, 0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.4)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
-  sectionLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.textMuted,
+  liveDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: '#10B981',
+    marginRight: 6,
+  },
+  liveIndicatorText: {
+    fontSize: 11,
+    fontFamily: fonts.sansBold,
+    color: '#34D399',
     letterSpacing: 0.5,
   },
-  countBadge: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.primary,
-    backgroundColor: colors.primaryLight,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
+
+  // Quick Stat
+  quickStatContainer: {
+    alignItems: 'flex-start',
+    marginTop: 6,
+    marginBottom: 4,
   },
-  recordCard: {
+  quickStatNumber: {
+    fontSize: 38,
+    fontFamily: fonts.sansBold,
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
+    lineHeight: 44,
+  },
+  quickStatLabel: {
+    fontSize: 13,
+    fontFamily: fonts.sansMedium,
+    color: '#94A3B8',
+    marginTop: 2,
+    letterSpacing: 0.2,
+  },
+
+  // 2. Floating Search Bar
+  searchBarWrapper: {
+    paddingHorizontal: 18,
+    marginTop: -22,
+    zIndex: 10,
+  },
+  searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 10,
+    borderColor: '#E2E8F0',
+    paddingHorizontal: 14,
+    height: 48,
+    ...shadows.card,
   },
-  photoContainer: {
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    height: '100%',
+    fontSize: 14,
+    fontFamily: fonts.sans,
+    color: '#173B70',
+  },
+
+  // 3. Attendance List
+  listContent: {
+    paddingHorizontal: 18,
+    paddingTop: 16,
+    paddingBottom: 40,
+  },
+  card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    marginBottom: 12, // 12px gap between cards
+    ...shadows.card,
+  },
+  avatarContainer: {
     width: 48,
     height: 48,
     borderRadius: 24,
     overflow: 'hidden',
-    backgroundColor: colors.surfaceAlt,
+    marginRight: 14,
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+  },
+  initialsCircle: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 24,
+    backgroundColor: '#EEF4FF',
     borderWidth: 1,
-    borderColor: colors.border,
-    marginRight: 12,
-  },
-  photo: {
-    width: '100%',
-    height: '100%',
-  },
-  photoPlaceholder: {
-    width: '100%',
-    height: '100%',
+    borderColor: '#DBEAFE',
     justifyContent: 'center',
     alignItems: 'center',
   },
+  initialsText: {
+    fontSize: 16,
+    fontFamily: fonts.sansBold,
+    color: '#173B70',
+  },
   infoCol: {
     flex: 1,
+    justifyContent: 'center',
+    marginRight: 10,
   },
   memberName: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.textPrimary,
+    fontSize: 15,
+    fontFamily: fonts.sansBold,
+    color: '#173B70',
+    letterSpacing: -0.2,
   },
   memberInstrument: {
-    fontSize: 12,
-    color: colors.textMuted,
-    marginTop: 2,
+    fontSize: 13,
+    fontFamily: fonts.sans,
+    color: '#64748B',
+    marginTop: 3,
   },
-  timeBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
+  statusCol: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
   },
   timeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.textPrimary,
+    fontSize: 13,
+    fontFamily: fonts.sansBold,
+    color: '#173B70',
+    letterSpacing: -0.2,
+  },
+  presentBadge: {
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    marginTop: 5,
+  },
+  presentBadgeText: {
+    fontSize: 10,
+    fontFamily: fonts.sansBold,
+    color: '#15803D',
+    letterSpacing: 0.6,
+  },
+
+  // 4. Empty State & Loader
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 60,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    fontFamily: fonts.sansMedium,
+    color: '#64748B',
   },
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 60,
+    paddingTop: 70,
+    paddingHorizontal: 32,
   },
   emptyTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginTop: 12,
-    marginBottom: 4,
+    fontSize: 17,
+    fontFamily: fonts.sansBold,
+    color: '#173B70',
+    marginTop: 14,
+    marginBottom: 6,
   },
   emptySubtitle: {
     fontSize: 13,
-    color: colors.textMuted,
+    fontFamily: fonts.sans,
+    color: '#94A3B8',
     textAlign: 'center',
-    paddingHorizontal: 30,
-    lineHeight: 18,
-  },
-  footerNoteBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    borderRadius: 8,
-    padding: 12,
-    marginTop: 8,
-  },
-  footerNoteText: {
-    fontSize: 11,
-    color: colors.textMuted,
-    flex: 1,
-    lineHeight: 16,
-  },
-  bottomBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: spacing.pagePadding,
-    paddingVertical: 14,
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  bottomBarLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.textSecondary,
-  },
-  bottomBarCount: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: colors.primary,
+    lineHeight: 19,
   },
 });
