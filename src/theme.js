@@ -1,47 +1,92 @@
 export const colors = {
-  // Base backgrounds
+  // Pure White Canvas (as approved)
   background: '#FFFFFF',
-  surface: '#F8FAFC',
-  surfaceAlt: '#F1F5F9',
+  surface: '#FFFFFF',          // Crisp floating card surface
+  surfaceAlt: '#F1F4F9',       // Subtle section backing
   card: '#FFFFFF',
 
-  // Borders
-  border: '#E2E8F0',
-  borderLight: '#F1F5F9',
+  // Primary Royal Brand (Navy to Rich Royal Blue)
+  primary: '#173B70',          // Heritage GGM Navy
+  primaryRoyal: '#1E40AF',     // Vibrant church royal blue
+  primaryGradient: ['#173B70', '#2563EB'], // Gradient for buttons & headers
+  primaryLight: '#EEF4FF',
+  primaryBorder: '#DBEAFE',
+
+  // Subtle header gradient
+  headerGradient: ['#E9F0FD', '#FFFFFF'],
+
+  // Borders (ultra light & refined)
+  border: '#E9EEF5',
+  borderLight: '#F3F6FA',
   borderDark: '#CBD5E1',
 
-  // Primary Brand (GGM Dark Blue / Navy)
-  primary: '#173B70',
-  primaryDark: '#0E2547',
-  primaryLight: '#EEF4FB',
-  primaryBorder: '#D0E1F9',
-
   // Typography
-  textPrimary: '#0F172A',     // Dark navy / charcoal headings
-  textSecondary: '#475569',   // Slate body text
-  textMuted: '#64748B',       // Neutral gray captions
-  textLight: '#94A3B8',       // Light gray
+  textPrimary: '#0F172A',      // Midnight Slate
+  textSecondary: '#475569',    // Refined body text
+  textMuted: '#64748B',        // Subtle caption gray
+  textLight: '#94A3B8',
 
-  // Functional Status Badges & Accents (Restrained, non-glowing)
-  success: '#16A34A',
-  successBg: '#F0FDF4',
-  successBorder: '#BBF7D0',
-  successText: '#15803D',
+  // Accents & Badges
+  goldAccent: '#D97706',       // Church brass / gold accent
+  goldLight: '#FEF3C7',
+  success: '#10B981',
+  successBg: '#ECFDF5',
+  successBorder: '#A7F3D0',
+  successText: '#047857',
 
-  error: '#DC2626',
+  error: '#EF4444',
   errorBg: '#FEF2F2',
   errorBorder: '#FECACA',
   errorText: '#B91C1C',
 
-  warning: '#D97706',
+  warning: '#F59E0B',
   warningBg: '#FFFBEB',
   warningBorder: '#FDE68A',
   warningText: '#B45309',
 
-  // Neutral Badges
   neutralBg: '#F1F5F9',
   neutralBorder: '#E2E8F0',
-  neutralText: '#334155',
+  neutralText: '#475569',
+};
+
+export const fonts = {
+  // Elegant serif for titles, greetings, and formal headings
+  serif: 'PlayfairDisplay_700Bold',
+  serifSemiBold: 'PlayfairDisplay_600SemiBold',
+  serifRegular: 'PlayfairDisplay_400Regular',
+
+  // Clean, high-legibility geometric sans-serif for UI & body
+  sans: 'Inter_400Regular',
+  sansMedium: 'Inter_500Medium',
+  sansSemiBold: 'Inter_600SemiBold',
+  sansBold: 'Inter_700Bold',
+};
+
+export const shadows = {
+  // Floating Card Shadow with soft navy tint (no harsh black boxes)
+  card: {
+    shadowColor: '#173B70',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.05,
+    shadowRadius: 16,
+    elevation: 3,
+  },
+  // Button & Active Card Lift
+  lifted: {
+    shadowColor: '#173B70',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.16,
+    shadowRadius: 18,
+    elevation: 5,
+  },
+  // Subtle pill/chip shadow
+  soft: {
+    shadowColor: '#173B70',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 1,
+  },
 };
 
 export const spacing = {
@@ -57,47 +102,47 @@ export const spacing = {
 export const typography = {
   headerTitle: {
     fontSize: 16,
-    fontWeight: '700',
+    fontFamily: fonts.sansBold,
     color: colors.textPrimary,
     letterSpacing: -0.2,
   },
   headerSubtitle: {
     fontSize: 12,
-    fontWeight: '500',
+    fontFamily: fonts.sansMedium,
     color: colors.textMuted,
   },
   pageTitle: {
-    fontSize: 22,
-    fontWeight: '700',
+    fontSize: 24,
+    fontFamily: fonts.serif,
     color: colors.textPrimary,
     letterSpacing: -0.3,
   },
   sectionTitle: {
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: 12,
+    fontFamily: fonts.sansBold,
     color: colors.textMuted,
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
     textTransform: 'uppercase',
   },
   cardTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontFamily: fonts.sansSemiBold,
     color: colors.textPrimary,
   },
   body: {
     fontSize: 14,
-    fontWeight: '400',
+    fontFamily: fonts.sans,
     color: colors.textSecondary,
     lineHeight: 20,
   },
   bodyBold: {
     fontSize: 14,
-    fontWeight: '600',
+    fontFamily: fonts.sansSemiBold,
     color: colors.textPrimary,
   },
   caption: {
     fontSize: 12,
-    fontWeight: '400',
+    fontFamily: fonts.sans,
     color: colors.textMuted,
   },
 };
@@ -113,39 +158,41 @@ export const globalStyles = {
     height: 320,
     alignSelf: 'center',
     top: '28%',
-    opacity: 0.04,
+    opacity: 0.06,
     zIndex: 0,
   },
   card: {
     backgroundColor: colors.card,
-    borderRadius: 10,
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: 16,
+    padding: 18,
+    ...shadows.card,
   },
   primaryButton: {
-    backgroundColor: colors.primary,
     minHeight: 52,
-    borderRadius: 9,
+    borderRadius: 14,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 18,
+    ...shadows.lifted,
   },
   primaryButtonText: {
     color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '700',
+    fontFamily: fonts.sansBold,
     letterSpacing: 0.3,
   },
   input: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 8,
+    borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 14,
+    fontFamily: fonts.sans,
     color: colors.textPrimary,
   },
 };

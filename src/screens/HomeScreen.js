@@ -16,7 +16,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { registerForPushNotifications } from '../lib/notifications';
 import { syncPendingCheckins } from '../lib/offline';
-import { colors, spacing } from '../theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
+import { colors, spacing, fonts, shadows } from '../theme';
 
 const PROFILE_CACHE_KEY = '@ggm_user_profile';
 
@@ -226,6 +228,7 @@ export default function HomeScreen({ navigation }) {
   };
 
   const handleCheckInPress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     if (activeActivity) {
       navigation.navigate('CheckIn', { activity: activeActivity });
     }
@@ -343,23 +346,34 @@ export default function HomeScreen({ navigation }) {
             </View>
           )}
 
-          {/* Primary CTA Check Attendance Button */}
+          {/* Primary CTA Check Attendance Button with Gradient & Haptics */}
           <TouchableOpacity
             style={[
-              styles.checkAttendanceButton,
+              styles.checkAttendanceButtonWrapper,
               (!activeActivity || loadingActivity) && styles.checkAttendanceButtonDisabled,
             ]}
             onPress={handleCheckInPress}
             disabled={!activeActivity || loadingActivity}
             activeOpacity={0.85}
           >
-            <Ionicons
-              name="checkmark-circle-outline"
-              size={20}
-              color="#FFFFFF"
-              style={{ marginRight: 8 }}
-            />
-            <Text style={styles.checkAttendanceButtonText}>REGISTER ATTENDANCE</Text>
+            <LinearGradient
+              colors={
+                (!activeActivity || loadingActivity)
+                  ? ['#CBD5E1', '#94A3B8']
+                  : colors.primaryGradient
+              }
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.checkAttendanceGradient}
+            >
+              <Ionicons
+                name="checkmark-circle-outline"
+                size={20}
+                color="#FFFFFF"
+                style={{ marginRight: 8 }}
+              />
+              <Text style={styles.checkAttendanceButtonText}>REGISTER ATTENDANCE</Text>
+            </LinearGradient>
           </TouchableOpacity>
         </View>
 
@@ -562,7 +576,7 @@ const styles = StyleSheet.create({
     height: 320,
     alignSelf: 'center',
     top: '28%',
-    opacity: 0.04,
+    opacity: 0.06,
     zIndex: 0,
   },
   centered: {
@@ -640,17 +654,19 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryLight,
     borderWidth: 1,
     borderColor: colors.primaryBorder,
-    borderRadius: 12,
+    borderRadius: 18,
     padding: 16,
     marginBottom: 20,
+    ...shadows.card,
   },
   subAdminSection: {
     backgroundColor: '#F8FAFC',
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 12,
+    borderRadius: 18,
     padding: 16,
     marginBottom: 20,
+    ...shadows.card,
   },
   adminTextGroup: {
     marginBottom: 12,
@@ -684,7 +700,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 8,
+    borderRadius: 10,
     paddingVertical: 10,
     paddingHorizontal: 6,
     alignItems: 'center',
@@ -699,7 +715,7 @@ const styles = StyleSheet.create({
   },
   adminDashboardFullButton: {
     backgroundColor: colors.primary,
-    borderRadius: 8,
+    borderRadius: 10,
     paddingVertical: 11,
     alignItems: 'center',
   },
@@ -713,7 +729,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.primary,
-    borderRadius: 8,
+    borderRadius: 10,
     paddingVertical: 11,
     paddingHorizontal: 14,
     marginTop: 10,
@@ -727,29 +743,30 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   welcomeGreeting: {
-    fontSize: 22,
-    fontWeight: '700',
+    fontSize: 24,
+    fontFamily: fonts.serif,
     color: colors.textPrimary,
     letterSpacing: -0.3,
   },
   welcomeSubhead: {
     fontSize: 14,
-    fontWeight: '600',
+    fontFamily: fonts.sansBold,
     color: colors.primary,
-    marginTop: 2,
+    marginTop: 3,
   },
   welcomePortalLabel: {
     fontSize: 13,
-    fontWeight: '400',
+    fontFamily: fonts.sans,
     color: colors.textMuted,
   },
   profileSection: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 10,
+    borderRadius: 18,
     padding: 16,
     marginBottom: 20,
+    ...shadows.card,
   },
   profileHeaderRow: {
     flexDirection: 'row',
@@ -818,9 +835,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 10,
+    borderRadius: 18,
     padding: 16,
     marginBottom: 20,
+    ...shadows.card,
   },
   activityTopRow: {
     flexDirection: 'row',
@@ -830,7 +848,7 @@ const styles = StyleSheet.create({
   },
   sectionHeading: {
     fontSize: 12,
-    fontWeight: '700',
+    fontFamily: fonts.sansBold,
     color: colors.textMuted,
     letterSpacing: 0.6,
   },
@@ -865,7 +883,7 @@ const styles = StyleSheet.create({
   },
   activityTitle: {
     fontSize: 16,
-    fontWeight: '700',
+    fontFamily: fonts.sansBold,
     color: colors.textPrimary,
     marginBottom: 6,
   },
@@ -891,41 +909,48 @@ const styles = StyleSheet.create({
   },
   noActivityTitle: {
     fontSize: 14,
-    fontWeight: '600',
+    fontFamily: fonts.sansSemiBold,
     color: colors.textPrimary,
     marginBottom: 4,
   },
   noActivitySubtitle: {
     fontSize: 12,
+    fontFamily: fonts.sans,
     color: colors.textMuted,
     textAlign: 'center',
     maxWidth: 260,
   },
-  checkAttendanceButton: {
-    backgroundColor: colors.primary,
+  checkAttendanceButtonWrapper: {
+    borderRadius: 14,
+    overflow: 'hidden',
+    width: '100%',
+    ...shadows.lifted,
+  },
+  checkAttendanceButtonDisabled: {
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  checkAttendanceGradient: {
     minHeight: 54,
-    borderRadius: 9,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    width: '100%',
-  },
-  checkAttendanceButtonDisabled: {
-    backgroundColor: '#CBD5E1',
+    paddingHorizontal: 16,
   },
   checkAttendanceButtonText: {
     color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '700',
+    fontFamily: fonts.sansBold,
     letterSpacing: 0.4,
   },
   historySection: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 10,
+    borderRadius: 18,
     padding: 16,
     marginBottom: 20,
+    ...shadows.card,
   },
   historyHeaderRow: {
     flexDirection: 'row',
