@@ -17,7 +17,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
+import { File, Paths } from 'expo-file-system';
+import * as FileSystemLegacy from 'expo-file-system/legacy';
 import { decode } from 'base64-arraybuffer';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
@@ -180,10 +181,28 @@ export default function ProfileScreen({ navigation }) {
       const compressed = await compressImage(uri);
       const filePath = `${user.id}/avatar_${Date.now()}.jpg`;
 
-      const base64 = await FileSystem.readAsStringAsync(compressed, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-      const arrayBuffer = decode(base64);
+      // Read file binary using the new Expo File API (with safe fallback)
+      let arrayBuffer;
+      try {
+        const file = new File(compressed);
+        if (typeof file.bytes === 'function') {
+          const bytes = await file.bytes();
+          arrayBuffer = bytes.buffer;
+        } else if (typeof file.base64 === 'function') {
+          const b64 = file.base64();
+          arrayBuffer = decode(b64);
+        } else {
+          const b64 = await FileSystemLegacy.readAsStringAsync(compressed, {
+            encoding: FileSystemLegacy.EncodingType.Base64,
+          });
+          arrayBuffer = decode(b64);
+        }
+      } catch (_fileErr) {
+        const b64 = await FileSystemLegacy.readAsStringAsync(compressed, {
+          encoding: FileSystemLegacy.EncodingType.Base64,
+        });
+        arrayBuffer = decode(b64);
+      }
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')
