@@ -13,11 +13,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
+import Svg, { Path } from 'react-native-svg';
 import { supabase } from '../lib/supabase';
 import { registerForPushNotifications } from '../lib/notifications';
 import { syncPendingCheckins } from '../lib/offline';
-import { LinearGradient } from 'expo-linear-gradient';
-import * as Haptics from 'expo-haptics';
 import { colors, spacing, fonts, shadows } from '../theme';
 
 const PROFILE_CACHE_KEY = '@ggm_user_profile';
@@ -242,20 +243,39 @@ export default function HomeScreen({ navigation }) {
   const name = userProfile?.name || meta.full_name || 'Member';
   const role = userProfile?.role || meta.role || 'member';
   const isSuperAdmin = role === 'super_admin';
-  const isSubAdmin = role === 'sub_admin';
 
   return (
     <View style={styles.container}>
-      {/* Background Approved Watermark */}
+      {/* 1. Background Approved Faint Watermark (Strict 0.04 Opacity) */}
       <Image
         source={require('../../assets/logo.png')}
         style={styles.watermark}
         resizeMode="contain"
       />
 
-      {/* 1. Header: Dark Navy with Curved Gold Bottom Border */}
+      {/* 2. Faint Musical Background Texture Floating Across Page */}
+      <View style={styles.backgroundMusicalTexture} pointerEvents="none">
+        <Text style={[styles.bgMusicNote, { top: 220, left: 16 }]}>𝄞</Text>
+        <Text style={[styles.bgMusicNote, { top: 270, right: 24, fontSize: 32 }]}>♫</Text>
+        <Text style={[styles.bgMusicNote, { top: 380, left: 28 }]}>♪</Text>
+        <Text style={[styles.bgMusicNote, { top: 480, right: 35 }]}>𝄢</Text>
+        <Text style={[styles.bgMusicNote, { top: 560, left: 18, fontSize: 28 }]}>♬</Text>
+        <Text style={[styles.bgMusicNote, { top: 640, right: 22 }]}>♩</Text>
+      </View>
+
+      {/* 3. The Wavy Navy Header with Musical Notes & Gold Curved Border */}
       <View style={styles.headerWrapper}>
         <SafeAreaView edges={['top', 'left', 'right']} style={styles.headerSafeArea}>
+          {/* Faint Musical Notes Inside Header */}
+          <View style={styles.headerMusicalBackground} pointerEvents="none">
+            <Text style={[styles.headerMusicNote, { top: 12, right: 30 }]}>♪</Text>
+            <Text style={[styles.headerMusicNote, { top: 42, right: 80, fontSize: 24 }]}>♫</Text>
+            <Text style={[styles.headerMusicNote, { top: 68, left: 20 }]}>♩</Text>
+            <Text style={[styles.headerMusicNote, { top: 20, left: 130, fontSize: 20 }]}>♬</Text>
+            <Text style={[styles.headerMusicNote, { top: 55, right: 140 }]}>♪</Text>
+          </View>
+
+          {/* Top Bar: Logo & Notification Bell */}
           <View style={styles.headerTopBar}>
             <View style={styles.headerLeft}>
               <View style={styles.headerLogoCircle}>
@@ -283,95 +303,140 @@ export default function HomeScreen({ navigation }) {
             </View>
           </View>
 
-          {/* Welcome Greeting with Gold Motif */}
+          {/* Welcome Area: Gold Sun Icon & Playfair Display Font */}
           <View style={styles.welcomeContainer}>
-            <View style={styles.welcomeMotifRow}>
-              <Ionicons name="sparkles" size={14} color="#D4AF37" />
-              <Text style={styles.welcomeAuraText}>SANCTUARY MUSIC MINISTRY</Text>
-              <Ionicons name="sparkles" size={14} color="#D4AF37" />
+            <View style={styles.welcomeGoldIconWrapper}>
+              <Ionicons name="sunny" size={20} color="#D4AF37" />
             </View>
             <Text style={styles.welcomeGreeting} numberOfLines={1}>
               Welcome, {name}
             </Text>
+            <Text style={styles.welcomeSubtitle}>Sanctuary Music Ministry</Text>
           </View>
         </SafeAreaView>
 
-        {/* Curved Gold Accent Line at bottom of header */}
-        <View style={styles.goldCurveLine} />
+        {/* Wavy SVG Bottom Curve with 4px Thick Gold Border */}
+        <Svg
+          width="100%"
+          height={40}
+          viewBox="0 0 375 40"
+          preserveAspectRatio="none"
+          style={styles.wavySvg}
+        >
+          {/* Navy Wave Body */}
+          <Path
+            d="M0,0 L375,0 L375,12 Q280,38 187.5,20 Q95,2 0,28 Z"
+            fill="#173B70"
+          />
+          {/* Thick Gold Wave Border Along the Bottom */}
+          <Path
+            d="M0,28 Q95,2 187.5,20 Q280,38 375,12"
+            fill="none"
+            stroke="#D4AF37"
+            strokeWidth="4"
+          />
+        </Svg>
       </View>
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* 2. The 3D Glossy Circular Check-In Button */}
+        {/* 4. Central Action Area: Giant Gold Ring with GGM Logo & Pill "Check In →" Button */}
         <View style={styles.shutterSection}>
-          <View style={styles.shutterGoldRing}>
-            <TouchableOpacity
-              style={[
-                styles.shutter3DButton,
-                (!activeActivity || loadingActivity) && styles.shutter3DButtonDisabled,
-              ]}
-              onPress={handleCheckInPress}
-              disabled={!activeActivity || loadingActivity}
-              activeOpacity={0.85}
+          {/* Giant Gold Ring with GGM Church Logo (Tap to Check In) */}
+          <TouchableOpacity
+            style={[
+              styles.shutterGoldRing,
+              (!activeActivity || loadingActivity) && styles.shutterGoldRingDisabled,
+            ]}
+            onPress={handleCheckInPress}
+            disabled={!activeActivity || loadingActivity}
+            activeOpacity={0.88}
+          >
+            <LinearGradient
+              colors={
+                activeActivity
+                  ? ['#1E40AF', '#173B70', '#0F2444']
+                  : ['#94A3B8', '#475569', '#1E293B']
+              }
+              start={{ x: 0.15, y: 0 }}
+              end={{ x: 0.85, y: 1 }}
+              style={styles.shutterGradient}
             >
-              <LinearGradient
-                colors={
-                  activeActivity
-                    ? ['#2563EB', '#173B70', '#0F2444']
-                    : ['#94A3B8', '#64748B', '#334155']
-                }
-                start={{ x: 0.1, y: 0 }}
-                end={{ x: 0.9, y: 1 }}
-                style={styles.shutterGradient}
-              >
-                {/* 3D Glossy Light Reflection (Top Arc) */}
-                <View style={styles.shutterGloss} />
+              {/* 3D Glossy Light Reflection (Top Arc) */}
+              <View style={styles.shutterGloss} />
 
-                {/* Shutter Icon & Text */}
-                <View style={styles.shutterContent}>
-                  {loadingActivity ? (
-                    <ActivityIndicator size="large" color="#FFFFFF" />
-                  ) : (
-                    <>
-                      <View style={styles.checkIconOuter}>
-                        <Ionicons name="checkmark" size={38} color="#FFFFFF" />
-                      </View>
-                      <Text style={styles.shutterMainText}>
-                        {activeActivity ? 'REGISTER' : 'ATTENDANCE'}
-                      </Text>
-                      <Text style={styles.shutterSubText}>
-                        {activeActivity ? 'CHECK-IN' : 'PORTAL CLOSED'}
-                      </Text>
-                    </>
-                  )}
-                </View>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
+              {/* Church Brand Emblem Proudly Centered */}
+              <View style={styles.logoCircleWrapper}>
+                <Image
+                  source={require('../../assets/logo.png')}
+                  style={styles.shutterLogo}
+                  resizeMode="contain"
+                />
+              </View>
+            </LinearGradient>
+          </TouchableOpacity>
 
-          {/* Session Status Pill below Button */}
-          <View style={styles.statusPillContainer}>
+          {/* Dedicated Navy Pill-Shaped "Check In →" Button Directly Below Circle */}
+          <TouchableOpacity
+            style={[
+              styles.pillCheckInButton,
+              (!activeActivity || loadingActivity) && styles.pillCheckInDisabled,
+            ]}
+            onPress={handleCheckInPress}
+            disabled={!activeActivity || loadingActivity}
+            activeOpacity={0.85}
+          >
+            <LinearGradient
+              colors={
+                activeActivity
+                  ? ['#173B70', '#1E40AF']
+                  : ['#94A3B8', '#64748B']
+              }
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.pillCheckInGradient}
+            >
+              <Ionicons
+                name="camera"
+                size={18}
+                color={activeActivity ? '#D4AF37' : '#FFFFFF'}
+                style={{ marginRight: 8 }}
+              />
+              <Text style={styles.pillCheckInText}>
+                {activeActivity ? 'Check In' : 'Attendance Closed'}
+              </Text>
+              <Ionicons
+                name="arrow-forward"
+                size={18}
+                color={activeActivity ? '#D4AF37' : '#FFFFFF'}
+                style={{ marginLeft: 8 }}
+              />
+            </LinearGradient>
+          </TouchableOpacity>
+
+          {/* Session Status Caption (Live Green Pill vs. Closed Gray Pill) */}
+          <View style={styles.sessionStatusRow}>
             {activeActivity ? (
-              <View style={styles.statusPillOpen}>
-                <View style={styles.statusDotLive} />
-                <Text style={styles.statusPillOpenText}>
+              <View style={styles.statusLivePill}>
+                <View style={styles.liveGreenDot} />
+                <Text style={styles.statusLiveText}>
                   LIVE SESSION OPEN • Closes at {new Date(activeActivity.closes_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </Text>
               </View>
             ) : (
-              <View style={styles.statusPillClosed}>
-                <Ionicons name="time-outline" size={13} color="#64748B" />
-                <Text style={styles.statusPillClosedText}>
-                  Next session opens on scheduled date
+              <View style={styles.statusClosedPill}>
+                <View style={styles.closedGrayDot} />
+                <Text style={styles.statusClosedText}>
+                  ATTENDANCE CLOSED • Next session on scheduled cleaning date
                 </Text>
               </View>
             )}
           </View>
         </View>
 
-        {/* 3. The Next Cleaning Date Card */}
+        {/* 5. The Next Cleaning Date Card (Pure White with Crisp 2px Gold Border) */}
         <View style={styles.dateCard}>
           <View style={styles.dateCardRow}>
             <View style={styles.dateIconWrapper}>
@@ -385,7 +450,7 @@ export default function HomeScreen({ navigation }) {
           </View>
         </View>
 
-        {/* 4. My Attendance History Section */}
+        {/* 6. My Attendance History Section */}
         <View style={styles.historySection}>
           <View style={styles.historyHeaderRow}>
             <Text style={styles.sectionHeading}>MY RECENT ATTENDANCE</Text>
@@ -443,7 +508,7 @@ export default function HomeScreen({ navigation }) {
           </View>
         </View>
 
-        {/* 5. Role-Conditional Admin Controls (For Super Admins) */}
+        {/* 7. Role-Conditional Admin Controls (For Super Admins) */}
         {isSuperAdmin && (
           <View style={styles.superAdminSection}>
             <View style={styles.adminBadgeRow}>
@@ -462,7 +527,7 @@ export default function HomeScreen({ navigation }) {
           </View>
         )}
 
-        {/* 6. Footer Spiritual Quote with Gold Lines */}
+        {/* 8. Footer Spiritual Quote with Gold Lines */}
         <View style={styles.quoteWrapper}>
           <View style={styles.quoteGoldLine} />
           <Text style={styles.quoteText}>
@@ -471,33 +536,6 @@ export default function HomeScreen({ navigation }) {
           <View style={styles.quoteGoldLine} />
         </View>
       </ScrollView>
-
-      {/* 7. Bottom Navigation Tab Bar (Solid Navy, Gold active indicator) */}
-      <View style={styles.bottomNav}>
-        <TouchableOpacity style={styles.navItem} activeOpacity={0.8}>
-          <Ionicons name="home" size={22} color="#D4AF37" />
-          <Text style={styles.navItemTextActive}>Home</Text>
-          <View style={styles.activeGoldBar} />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => navigation.navigate('MemberHistory')}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="time-outline" size={22} color="#94A3B8" />
-          <Text style={styles.navItemTextInactive}>History</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => navigation.navigate('AccountSettings')}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="person-outline" size={22} color="#94A3B8" />
-          <Text style={styles.navItemTextInactive}>Profile</Text>
-        </TouchableOpacity>
-      </View>
     </View>
   );
 }
@@ -513,7 +551,7 @@ const styles = StyleSheet.create({
     height: 320,
     alignSelf: 'center',
     top: '30%',
-    opacity: 0.06, // Strict approved faint watermark
+    opacity: 0.04, // Strict approved faint watermark
     zIndex: 0,
   },
   centered: {
@@ -521,11 +559,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  // 1. Header Styles
+  // Faint Musical Background Texture
+  backgroundMusicalTexture: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 0,
+  },
+  bgMusicNote: {
+    position: 'absolute',
+    fontSize: 26,
+    color: '#173B70',
+    opacity: 0.045, // Faint musical note texture
+    fontWeight: '700',
+  },
+
+  // 1. Wavy Header Styles
   headerWrapper: {
     backgroundColor: '#173B70', // Dark Navy
-    borderBottomLeftRadius: 26,
-    borderBottomRightRadius: 26,
     overflow: 'hidden',
     ...shadows.lifted,
     zIndex: 10,
@@ -533,13 +586,27 @@ const styles = StyleSheet.create({
   headerSafeArea: {
     paddingHorizontal: 20,
     paddingTop: 10,
-    paddingBottom: 18,
+    paddingBottom: 4,
+    position: 'relative',
+  },
+  headerMusicalBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  headerMusicNote: {
+    position: 'absolute',
+    fontSize: 18,
+    color: '#D4AF37',
+    opacity: 0.16, // Gold musical notes floating in header
   },
   headerTopBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   headerLeft: {
     flexDirection: 'row',
@@ -554,6 +621,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
+    borderWidth: 1.5,
+    borderColor: '#D4AF37', // Gold trim
   },
   headerLogo: {
     width: '100%',
@@ -587,7 +656,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     position: 'relative',
     borderWidth: 1,
-    borderColor: 'rgba(212, 175, 55, 0.3)',
+    borderColor: 'rgba(212, 175, 55, 0.35)',
   },
   unreadBadgeDot: {
     position: 'absolute',
@@ -601,48 +670,53 @@ const styles = StyleSheet.create({
     borderColor: '#173B70',
   },
   welcomeContainer: {
-    marginTop: 4,
-  },
-  welcomeMotifRow: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginBottom: 4,
+    marginTop: 4,
+    marginBottom: 8,
   },
-  welcomeAuraText: {
-    fontSize: 11,
-    fontFamily: fonts.sansBold,
-    color: '#D4AF37',
-    letterSpacing: 1,
+  welcomeGoldIconWrapper: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(212, 175, 55, 0.18)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 6,
   },
   welcomeGreeting: {
     fontSize: 26,
     fontFamily: fonts.serif, // Playfair Display
     color: '#FFFFFF',
     letterSpacing: -0.3,
+    textAlign: 'center',
   },
-  goldCurveLine: {
-    height: 4,
-    backgroundColor: '#D4AF37', // Gold curved bottom border
-    width: '100%',
+  welcomeSubtitle: {
+    fontSize: 12,
+    fontFamily: fonts.sansMedium,
+    color: 'rgba(255, 255, 255, 0.75)',
+    marginTop: 3,
+    letterSpacing: 0.5,
+  },
+  wavySvg: {
+    marginTop: -2,
   },
 
   // Scroll Content
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: 24,
+    paddingTop: 16,
     paddingBottom: 30,
   },
 
-  // 2. 3D Shutter Button Styles
+  // 2. Central 3D Logo Ring & Pill Button Styles
   shutterSection: {
     alignItems: 'center',
-    marginVertical: 12,
+    marginVertical: 10,
   },
   shutterGoldRing: {
-    width: 172,
-    height: 172,
-    borderRadius: 86,
+    width: 160,
+    height: 160,
+    borderRadius: 80,
     borderWidth: 4,
     borderColor: '#D4AF37', // Gold Ring
     justifyContent: 'center',
@@ -650,66 +724,85 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     shadowColor: '#173B70',
     shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.28,
-    shadowRadius: 20,
-    elevation: 10,
+    shadowOpacity: 0.35,
+    shadowRadius: 22,
+    elevation: 12,
   },
-  shutter3DButton: {
-    width: 156,
-    height: 156,
-    borderRadius: 78,
-    overflow: 'hidden',
-  },
-  shutter3DButtonDisabled: {
+  shutterGoldRingDisabled: {
     opacity: 0.85,
   },
   shutterGradient: {
-    flex: 1,
+    width: 144,
+    height: 144,
+    borderRadius: 72,
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
+    overflow: 'hidden',
   },
   shutterGloss: {
     position: 'absolute',
     top: 0,
-    left: 10,
-    right: 10,
-    height: 70,
-    borderTopLeftRadius: 75,
-    borderTopRightRadius: 75,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    left: 8,
+    right: 8,
+    height: 65,
+    borderTopLeftRadius: 70,
+    borderTopRightRadius: 70,
+    backgroundColor: 'rgba(255, 255, 255, 0.22)',
   },
-  shutterContent: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 2,
-  },
-  checkIconOuter: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: 'rgba(255, 255, 255, 0.18)',
+  logoCircleWrapper: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: '#FFFFFF',
+    padding: 10,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 4,
+    borderWidth: 2,
+    borderColor: '#D4AF37', // Gold Border around logo
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  shutterMainText: {
-    fontSize: 15,
-    fontFamily: fonts.sansBold,
+  shutterLogo: {
+    width: '100%',
+    height: '100%',
+  },
+
+  // Dedicated Pill-Shaped "Check In →" Button
+  pillCheckInButton: {
+    marginTop: 18,
+    borderRadius: 25,
+    overflow: 'hidden',
+    ...shadows.lifted,
+    width: 220,
+  },
+  pillCheckInDisabled: {
+    opacity: 0.65,
+    elevation: 0,
+  },
+  pillCheckInGradient: {
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#D4AF37', // Gold Trim
+    borderRadius: 25,
+  },
+  pillCheckInText: {
     color: '#FFFFFF',
-    letterSpacing: 1.2,
+    fontSize: 16,
+    fontFamily: fonts.sansBold,
+    letterSpacing: 0.5,
   },
-  shutterSubText: {
-    fontSize: 11,
-    fontFamily: fonts.sansMedium,
-    color: '#D4AF37', // Gold Subtext
-    letterSpacing: 0.6,
-    marginTop: 2,
+  sessionStatusRow: {
+    marginTop: 12,
   },
-  statusPillContainer: {
-    marginTop: 14,
-  },
-  statusPillOpen: {
+  statusLivePill: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#ECFDF5',
@@ -719,19 +812,19 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 20,
   },
-  statusDotLive: {
+  liveGreenDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
     backgroundColor: '#10B981',
     marginRight: 7,
   },
-  statusPillOpenText: {
+  statusLiveText: {
     fontSize: 12,
     fontFamily: fonts.sansBold,
     color: '#047857',
   },
-  statusPillClosed: {
+  statusClosedPill: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F1F5F9',
@@ -741,19 +834,25 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 20,
   },
-  statusPillClosedText: {
+  closedGrayDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#94A3B8',
+    marginRight: 7,
+  },
+  statusClosedText: {
     fontSize: 12,
     fontFamily: fonts.sansMedium,
     color: '#64748B',
-    marginLeft: 5,
   },
 
-  // 3. Next Cleaning Date Card
+  // 3. Next Cleaning Date Card (Pure White with Crisp 2px Gold Border)
   dateCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FFFFFF', // Pure White (NO yellow)
     borderRadius: 18,
     borderWidth: 2,
-    borderColor: '#D4AF37', // Thick Gold Border
+    borderColor: '#D4AF37', // Crisp 2px Gold Border
     padding: 18,
     marginTop: 16,
     marginBottom: 20,
@@ -930,43 +1029,5 @@ const styles = StyleSheet.create({
     color: '#173B70',
     marginHorizontal: 12,
     textAlign: 'center',
-  },
-
-  // 7. Bottom Tab Bar
-  bottomNav: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    backgroundColor: '#173B70', // Solid Navy
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(212, 175, 55, 0.2)',
-    paddingVertical: 8,
-    paddingBottom: 16,
-  },
-  navItem: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-    paddingHorizontal: 16,
-  },
-  navItemTextActive: {
-    fontSize: 11,
-    fontFamily: fonts.sansBold,
-    color: '#D4AF37', // Active Gold
-    marginTop: 3,
-  },
-  navItemTextInactive: {
-    fontSize: 11,
-    fontFamily: fonts.sansMedium,
-    color: '#94A3B8', // Inactive Silver/Gray
-    marginTop: 3,
-  },
-  activeGoldBar: {
-    position: 'absolute',
-    bottom: -6,
-    width: 28,
-    height: 3,
-    backgroundColor: '#D4AF37', // 3px Gold underline
-    borderRadius: 1.5,
   },
 });

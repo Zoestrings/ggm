@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, View, StyleSheet, Image } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 
 import {
@@ -49,6 +51,105 @@ import AllAttendanceScreen from './src/screens/AllAttendanceScreen';
 import UpdateModal from './src/components/UpdateModal';
 
 const Stack = createStackNavigator();
+const Tab = createBottomTabNavigator();
+
+function MainTabs() {
+  return (
+    <Tab.Navigator
+      screenOptions={{
+        headerShown: false,
+        tabBarStyle: {
+          backgroundColor: '#173B70', // Solid Navy
+          borderTopWidth: 1,
+          borderTopColor: 'rgba(212, 175, 55, 0.25)', // Gold border
+          height: 62,
+          paddingBottom: 8,
+          paddingTop: 8,
+        },
+        tabBarActiveTintColor: '#D4AF37', // Active Gold
+        tabBarInactiveTintColor: '#94A3B8', // Inactive Silver/Gray
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontFamily: 'Inter_600SemiBold',
+          marginTop: 2,
+        },
+      }}
+    >
+      <Tab.Screen
+        name="HomeScreen"
+        component={HomeScreen}
+        options={{
+          tabBarLabel: 'Home',
+          tabBarIcon: ({ color, focused }) => (
+            <View style={{ alignItems: 'center' }}>
+              <Ionicons name={focused ? 'home' : 'home-outline'} size={22} color={color} />
+              {focused && (
+                <View
+                  style={{
+                    position: 'absolute',
+                    bottom: -6,
+                    width: 24,
+                    height: 3,
+                    backgroundColor: '#D4AF37',
+                    borderRadius: 1.5,
+                  }}
+                />
+              )}
+            </View>
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="MemberHistoryTab"
+        component={MemberHistoryScreen}
+        options={{
+          tabBarLabel: 'History',
+          tabBarIcon: ({ color, focused }) => (
+            <View style={{ alignItems: 'center' }}>
+              <Ionicons name={focused ? 'time' : 'time-outline'} size={22} color={color} />
+              {focused && (
+                <View
+                  style={{
+                    position: 'absolute',
+                    bottom: -6,
+                    width: 24,
+                    height: 3,
+                    backgroundColor: '#D4AF37',
+                    borderRadius: 1.5,
+                  }}
+                />
+              )}
+            </View>
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="ProfileTab"
+        component={AccountSettingsScreen}
+        options={{
+          tabBarLabel: 'Profile',
+          tabBarIcon: ({ color, focused }) => (
+            <View style={{ alignItems: 'center' }}>
+              <Ionicons name={focused ? 'person' : 'person-outline'} size={22} color={color} />
+              {focused && (
+                <View
+                  style={{
+                    position: 'absolute',
+                    bottom: -6,
+                    width: 24,
+                    height: 3,
+                    backgroundColor: '#D4AF37',
+                    borderRadius: 1.5,
+                  }}
+                />
+              )}
+            </View>
+          ),
+        }}
+      />
+    </Tab.Navigator>
+  );
+}
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -105,7 +206,7 @@ export default function App() {
           {/* Auth & Member Screens */}
           <Stack.Screen name="Login" component={LoginScreen} />
           <Stack.Screen name="Register" component={RegisterScreen} />
-          <Stack.Screen name="Home" component={HomeScreen} />
+          <Stack.Screen name="Home" component={MainTabs} />
           <Stack.Screen name="CheckIn" component={CheckInScreen} />
           <Stack.Screen name="CompleteProfile" component={CompleteProfileScreen} />
           <Stack.Screen name="MemberHistory" component={MemberHistoryScreen} />
