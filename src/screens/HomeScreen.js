@@ -379,13 +379,18 @@ export default function HomeScreen({ navigation }) {
           </View>
         </View>
 
-        {/* 6. Footer Spiritual Quote with Gold Lines */}
-        <View style={styles.quoteWrapper}>
-          <View style={styles.quoteGoldLine} />
-          <Text style={styles.quoteText}>
-            "Affecting souls for Christ through music"
+        {/* 6. Footer Spiritual Quote with Gold Lines & Ministry Subtitle */}
+        <View style={styles.footerContainer}>
+          <View style={styles.quoteWrapper}>
+            <View style={styles.quoteGoldLine} />
+            <Text style={styles.quoteText}>
+              "Affecting souls for Christ through music"
+            </Text>
+            <View style={styles.quoteGoldLine} />
+          </View>
+          <Text style={styles.footerMinistrySubtitle}>
+            GOD'S GRACE MINISTRY INSTRUMENTALIST
           </Text>
-          <View style={styles.quoteGoldLine} />
         </View>
       </ScrollView>
     </View>
@@ -693,13 +698,17 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
-  // 4. Spiritual Quote Footer
+  // 4. Spiritual Quote & Ministry Footer
+  footerContainer: {
+    alignItems: 'center',
+    marginVertical: 20,
+    paddingHorizontal: 10,
+  },
   quoteWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginVertical: 18,
-    paddingHorizontal: 10,
+    width: '100%',
   },
   quoteGoldLine: {
     flex: 1,
@@ -713,6 +722,14 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     color: '#173B70',
     marginHorizontal: 12,
+    textAlign: 'center',
+  },
+  footerMinistrySubtitle: {
+    fontSize: 10,
+    fontFamily: fonts.sansBold,
+    color: '#D4AF37', // Gold Accent
+    letterSpacing: 1.2,
+    marginTop: 6,
     textAlign: 'center',
   },
 });
