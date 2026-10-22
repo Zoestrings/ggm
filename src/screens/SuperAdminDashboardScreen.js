@@ -15,9 +15,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/legacy';
-import * as Sharing from 'expo-sharing';
 import { supabase } from '../lib/supabase';
 import { fonts, shadows } from '../theme';
+import GeometricHeader from '../components/GeometricHeader';
 
 export default function SuperAdminDashboardScreen({ navigation }) {
   const [currentUser, setCurrentUser] = useState(null);
@@ -306,12 +306,8 @@ export default function SuperAdminDashboardScreen({ navigation }) {
     <View style={styles.container}>
       {/* ── 1. The Dark Navy Hero Header (Top 40% of Screen, Solid Navy #173B70) ── */}
       <View style={styles.heroHeader}>
-        {/* Subtle Geometric Texture Overlay (Large Overlapping Squares) */}
-        <View style={styles.geometricPatternContainer} pointerEvents="none">
-          <View style={[styles.geometricSquare, { top: -40, right: -30, width: 200, height: 200, transform: [{ rotate: '15deg' }] }]} />
-          <View style={[styles.geometricSquare, { top: 70, right: 30, width: 150, height: 150, transform: [{ rotate: '32deg' }] }]} />
-          <View style={[styles.geometricSquare, { top: 120, left: -60, width: 180, height: 180, transform: [{ rotate: '25deg' }] }]} />
-        </View>
+        {/* Reusable FirstBank-Style Geometric Pattern */}
+        <GeometricHeader />
 
         <SafeAreaView edges={['top', 'left', 'right']} style={styles.heroSafeArea}>
           {/* Top Bar: Hamburger menu (left), "Dashboard" (centered Playfair Display 24px), Notification Bell with Red Badge (right) */}
@@ -550,24 +546,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#173B70', // Solid Navy (#173B70)
     paddingBottom: 22,
     position: 'relative',
+    overflow: 'hidden',
     ...shadows.lifted,
     zIndex: 10,
-  },
-  // Subtle Geometric Texture Overlay (Overlapping Squares)
-  geometricPatternContainer: {
-    ...StyleSheet.absoluteFillObject,
-    overflow: 'hidden',
-  },
-  geometricSquare: {
-    position: 'absolute',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
-    borderRadius: 18,
   },
   heroSafeArea: {
     paddingHorizontal: 20,
     paddingTop: 8,
+    zIndex: 1,
   },
 
   // Top App Bar

@@ -18,6 +18,7 @@ import { supabase } from '../lib/supabase';
 import { registerForPushNotifications } from '../lib/notifications';
 import { syncPendingCheckins } from '../lib/offline';
 import { fonts, shadows } from '../theme';
+import GeometricHeader from '../components/GeometricHeader';
 
 const PROFILE_CACHE_KEY = '@ggm_user_profile';
 
@@ -275,6 +276,7 @@ export default function HomeScreen({ navigation, route }) {
 
       {/* 3. The Navy Header with Clean Rounded-Square Logo Container & Gold Curved Bottom */}
       <View style={styles.headerWrapper}>
+        <GeometricHeader />
         <SafeAreaView edges={['top', 'left', 'right']} style={styles.headerSafeArea}>
           {/* Subtle Musical Texture inside Header */}
           <View style={styles.headerMusicalBackground} pointerEvents="none">
@@ -457,6 +459,7 @@ const styles = StyleSheet.create({
   // 1. Header Styles
   headerWrapper: {
     backgroundColor: '#173B70', // Dark Navy
+    position: 'relative',
     overflow: 'hidden',
     ...shadows.lifted,
     zIndex: 10,
@@ -466,6 +469,7 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: 14, // Generous breathing room
     position: 'relative',
+    zIndex: 1,
   },
   headerMusicalBackground: {
     position: 'absolute',

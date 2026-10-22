@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
 import { colors, fonts, shadows, spacing } from '../theme';
+import GeometricHeader from '../components/GeometricHeader';
 
 export default function SubAdminAttendanceScreen({ navigation, route }) {
   const [currentUser, setCurrentUser] = useState(null);
@@ -286,7 +287,9 @@ export default function SubAdminAttendanceScreen({ navigation, route }) {
 
       {/* 1. The Navy Hero Header */}
       <View style={styles.heroHeader}>
-        <SafeAreaView edges={['top', 'left', 'right']}>
+        {/* Reusable FirstBank-Style Geometric Pattern */}
+        <GeometricHeader />
+        <SafeAreaView edges={['top', 'left', 'right']} style={styles.heroSafeArea}>
           {/* Top Bar: Back Button, Title, Live Indicator */}
           <View style={styles.topBar}>
             <TouchableOpacity
@@ -394,8 +397,13 @@ const styles = StyleSheet.create({
   // 1. Navy Hero Header
   heroHeader: {
     backgroundColor: '#173B70',
-    paddingHorizontal: 20,
     paddingBottom: 36, // Space for the floating search bar overlap
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  heroSafeArea: {
+    paddingHorizontal: 20,
+    zIndex: 1,
   },
   topBar: {
     flexDirection: 'row',
