@@ -15,7 +15,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
 import { colors, fonts, shadows, spacing } from '../theme';
-import GeometricHeader from '../components/GeometricHeader';
 
 export default function SubAdminAttendanceScreen({ navigation, route }) {
   const [currentUser, setCurrentUser] = useState(null);
@@ -287,8 +286,14 @@ export default function SubAdminAttendanceScreen({ navigation, route }) {
 
       {/* 1. The Navy Hero Header */}
       <View style={styles.heroHeader}>
-        {/* Reusable FirstBank-Style Geometric Pattern */}
-        <GeometricHeader />
+        {/* Geometric Background Pattern */}
+        <Image
+          source={{
+            uri: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiPjxkZWZzPjxwYXR0ZXJuIGlkPSJwIiB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBvbHlnb24gcG9pbnRzPSIxMCwwIDQwLDAgMjAsMjAgLTEwLDIwIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDYpIi8+PHBvbHlnb24gcG9pbnRzPSI4MCwwIDExMCwwIDkwLDIwIDYwLDIwIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDYpIi8+PHBvbHlnb24gcG9pbnRzPSIxNTAsMCAxODAsMCAxNjAsMjAgMTMwLDIwIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDYpIi8+PHBvbHlnb24gcG9pbnRzPSIxMCwxMDAgNDAsMTAwIDIwLDEyMCAtMTAsMTIwIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDYpIi8+PHBvbHlnb24gcG9pbnRzPSI4MCwxMDAgMTEwLDEwMCA5MCwxMjAgNjAsMTIwIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDYpIi8+PHBvbHlnb24gcG9pbnRzPSIxNTAsMTAwIDE4MCwxMDAgMTYwLDEyMCAxMzAsMTIwIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDYpIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI3ApIi8+PC9zdmc+',
+          }}
+          style={styles.geometricPatternImage}
+          resizeMode="cover"
+        />
         <SafeAreaView edges={['top', 'left', 'right']} style={styles.heroSafeArea}>
           {/* Top Bar: Back Button, Title, Live Indicator */}
           <View style={styles.topBar}>
@@ -400,6 +405,14 @@ const styles = StyleSheet.create({
     paddingBottom: 36, // Space for the floating search bar overlap
     position: 'relative',
     overflow: 'hidden',
+  },
+  geometricPatternImage: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    opacity: 0.8,
   },
   heroSafeArea: {
     paddingHorizontal: 20,

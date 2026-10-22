@@ -18,7 +18,6 @@ import { supabase } from '../lib/supabase';
 import { registerForPushNotifications } from '../lib/notifications';
 import { syncPendingCheckins } from '../lib/offline';
 import { fonts, shadows } from '../theme';
-import GeometricHeader from '../components/GeometricHeader';
 
 const PROFILE_CACHE_KEY = '@ggm_user_profile';
 
@@ -276,7 +275,14 @@ export default function HomeScreen({ navigation, route }) {
 
       {/* 3. The Navy Header with Clean Rounded-Square Logo Container & Gold Curved Bottom */}
       <View style={styles.headerWrapper}>
-        <GeometricHeader />
+        {/* Geometric Background Pattern */}
+        <Image
+          source={{
+            uri: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiPjxkZWZzPjxwYXR0ZXJuIGlkPSJwIiB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBvbHlnb24gcG9pbnRzPSIxMCwwIDQwLDAgMjAsMjAgLTEwLDIwIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDYpIi8+PHBvbHlnb24gcG9pbnRzPSI4MCwwIDExMCwwIDkwLDIwIDYwLDIwIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDYpIi8+PHBvbHlnb24gcG9pbnRzPSIxNTAsMCAxODAsMCAxNjAsMjAgMTMwLDIwIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDYpIi8+PHBvbHlnb24gcG9pbnRzPSIxMCwxMDAgNDAsMTAwIDIwLDEyMCAtMTAsMTIwIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDYpIi8+PHBvbHlnb24gcG9pbnRzPSI4MCwxMDAgMTEwLDEwMCA5MCwxMjAgNjAsMTIwIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDYpIi8+PHBvbHlnb24gcG9pbnRzPSIxNTAsMTAwIDE4MCwxMDAgMTYwLDEyMCAxMzAsMTIwIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDYpIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI3ApIi8+PC9zdmc+',
+          }}
+          style={styles.geometricPatternImage}
+          resizeMode="cover"
+        />
         <SafeAreaView edges={['top', 'left', 'right']} style={styles.headerSafeArea}>
           {/* Subtle Musical Texture inside Header */}
           <View style={styles.headerMusicalBackground} pointerEvents="none">
@@ -463,6 +469,14 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     ...shadows.lifted,
     zIndex: 10,
+  },
+  geometricPatternImage: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    opacity: 0.8,
   },
   headerSafeArea: {
     paddingHorizontal: 20,

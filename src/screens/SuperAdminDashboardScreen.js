@@ -17,7 +17,6 @@ import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/legacy';
 import { supabase } from '../lib/supabase';
 import { fonts, shadows } from '../theme';
-import GeometricHeader from '../components/GeometricHeader';
 
 export default function SuperAdminDashboardScreen({ navigation }) {
   const [currentUser, setCurrentUser] = useState(null);
@@ -306,8 +305,14 @@ export default function SuperAdminDashboardScreen({ navigation }) {
     <View style={styles.container}>
       {/* ── 1. The Dark Navy Hero Header (Top 40% of Screen, Solid Navy #173B70) ── */}
       <View style={styles.heroHeader}>
-        {/* Reusable FirstBank-Style Geometric Pattern */}
-        <GeometricHeader />
+        {/* Geometric Background Pattern */}
+        <Image
+          source={{
+            uri: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiPjxkZWZzPjxwYXR0ZXJuIGlkPSJwIiB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBvbHlnb24gcG9pbnRzPSIxMCwwIDQwLDAgMjAsMjAgLTEwLDIwIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDYpIi8+PHBvbHlnb24gcG9pbnRzPSI4MCwwIDExMCwwIDkwLDIwIDYwLDIwIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDYpIi8+PHBvbHlnb24gcG9pbnRzPSIxNTAsMCAxODAsMCAxNjAsMjAgMTMwLDIwIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDYpIi8+PHBvbHlnb24gcG9pbnRzPSIxMCwxMDAgNDAsMTAwIDIwLDEyMCAtMTAsMTIwIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDYpIi8+PHBvbHlnb24gcG9pbnRzPSI4MCwxMDAgMTEwLDEwMCA5MCwxMjAgNjAsMTIwIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDYpIi8+PHBvbHlnb24gcG9pbnRzPSIxNTAsMTAwIDE4MCwxMDAgMTYwLDEyMCAxMzAsMTIwIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDYpIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI3ApIi8+PC9zdmc+',
+          }}
+          style={styles.geometricPatternImage}
+          resizeMode="cover"
+        />
 
         <SafeAreaView edges={['top', 'left', 'right']} style={styles.heroSafeArea}>
           {/* Top Bar: Hamburger menu (left), "Dashboard" (centered Playfair Display 24px), Notification Bell with Red Badge (right) */}
@@ -549,6 +554,14 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     ...shadows.lifted,
     zIndex: 10,
+  },
+  geometricPatternImage: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    opacity: 0.8,
   },
   heroSafeArea: {
     paddingHorizontal: 20,
