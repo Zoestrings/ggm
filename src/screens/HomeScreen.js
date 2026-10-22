@@ -345,6 +345,11 @@ export default function HomeScreen({ navigation }) {
             <Text style={styles.giantButtonText}>CHECK IN</Text>
           </TouchableOpacity>
 
+          {/* Gray Action Instruction Text */}
+          <Text style={styles.buttonInstructionText}>
+            Tap to check in for today's service and record your attendance.
+          </Text>
+
           {/* Session Status Pill */}
           <View style={styles.sessionStatusRow}>
             {activeActivity ? (
@@ -603,6 +608,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: fonts.sansBold,
     letterSpacing: 1.5,
+  },
+  buttonInstructionText: {
+    fontSize: 13,
+    fontFamily: fonts.sans,
+    color: '#64748B', // Gray
+    textAlign: 'center',
+    marginTop: 14,
+    maxWidth: 280,
+    lineHeight: 18,
   },
   sessionStatusRow: {
     marginTop: 16,
