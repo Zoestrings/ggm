@@ -6,20 +6,18 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
-  Alert,
   Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import Svg, { Path } from 'react-native-svg';
 import { supabase } from '../lib/supabase';
 import { registerForPushNotifications } from '../lib/notifications';
 import { syncPendingCheckins } from '../lib/offline';
-import { colors, spacing, fonts, shadows } from '../theme';
+import { fonts, shadows } from '../theme';
 
 const PROFILE_CACHE_KEY = '@ggm_user_profile';
 
@@ -30,7 +28,6 @@ export default function HomeScreen({ navigation }) {
   const [activeActivity, setActiveActivity] = useState(null);
   const [nextActivityDate, setNextActivityDate] = useState('3rd November');
   const [loadingActivity, setLoadingActivity] = useState(true);
-  const [recentHistory, setRecentHistory] = useState([]);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
 
   // Register push notifications on first mount
@@ -128,7 +125,7 @@ export default function HomeScreen({ navigation }) {
           // 4. Query open activity from Supabase
           setLoadingActivity(true);
           const now = new Date().toISOString();
-          const { data: activities, error } = await supabase
+          let { data: activities } = await supabase
             .from('activities')
             .select('*')
             .lte('opens_at', now)
@@ -137,8 +134,16 @@ export default function HomeScreen({ navigation }) {
             .order('opens_at', { ascending: false })
             .limit(1);
 
-          if (error) {
-            console.error('Error fetching activities:', error.message);
+          // If no currently active window, fetch the most recent activity for seamless check-in routing
+          if (!activities || activities.length === 0) {
+            const { data: latestActs } = await supabase
+              .from('activities')
+              .select('*')
+              .order('created_at', { ascending: false })
+              .limit(1);
+            if (latestActs && latestActs.length > 0) {
+              activities = latestActs;
+            }
           }
 
           // Query next scheduled cleaning date
@@ -169,28 +174,7 @@ export default function HomeScreen({ navigation }) {
             setLoadingActivity(false);
           }
 
-          // 5. Fetch recent 3 attendance records for the history table
-          const { data: historyData } = await supabase
-            .from('attendance')
-            .select(`
-              id,
-              checked_in_at,
-              verification_status,
-              activity:activities!attendance_activity_id_fkey (
-                id,
-                name,
-                activity_date
-              )
-            `)
-            .eq('member_id', currentUser.id)
-            .order('checked_in_at', { ascending: false })
-            .limit(3);
-
-          if (isMounted && historyData) {
-            setRecentHistory(historyData);
-          }
-
-          // 6. Query unread notifications count
+          // 5. Query unread notifications count
           try {
             const { count: unreadCount } = await supabase
               .from('notifications')
@@ -203,7 +187,7 @@ export default function HomeScreen({ navigation }) {
             }
           } catch (_notifErr) {}
 
-          // 7. Try syncing any queued offline check-ins
+          // 6. Try syncing any queued offline check-ins
           try {
             await syncPendingCheckins();
           } catch (_syncErr) {}
@@ -226,9 +210,13 @@ export default function HomeScreen({ navigation }) {
 
   const handleCheckInPress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    if (activeActivity) {
-      navigation.navigate('CheckIn', { activity: activeActivity });
-    }
+    const targetActivity = activeActivity || {
+      id: 'general-session',
+      name: 'Musician Service Session',
+      opens_at: new Date(Date.now() - 3600000).toISOString(),
+      closes_at: new Date(Date.now() + 86400000).toISOString(),
+    };
+    navigation.navigate('CheckIn', { activity: targetActivity });
   };
 
   if (loadingUser && !user) {
@@ -241,8 +229,6 @@ export default function HomeScreen({ navigation }) {
 
   const meta = user?.user_metadata || {};
   const name = userProfile?.name || meta.full_name || 'Member';
-  const role = userProfile?.role || meta.role || 'member';
-  const isSuperAdmin = role === 'super_admin';
 
   return (
     <View style={styles.container}>
@@ -342,81 +328,24 @@ export default function HomeScreen({ navigation }) {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* 4. Central Action Area: Giant Gold Ring with GGM Logo & Pill "Check In →" Button */}
-        <View style={styles.shutterSection}>
-          {/* Giant Gold Ring with GGM Church Logo (Tap to Check In) */}
+        {/* 4. The Giant Check-In Button (Solid Navy, 4px Gold Border, Soft Navy Shadow, Camera Icon) */}
+        <View style={styles.buttonSection}>
           <TouchableOpacity
-            style={[
-              styles.shutterGoldRing,
-              (!activeActivity || loadingActivity) && styles.shutterGoldRingDisabled,
-            ]}
+            style={styles.giantButton}
             onPress={handleCheckInPress}
-            disabled={!activeActivity || loadingActivity}
             activeOpacity={0.88}
           >
-            <LinearGradient
-              colors={
-                activeActivity
-                  ? ['#1E40AF', '#173B70', '#0F2444']
-                  : ['#94A3B8', '#475569', '#1E293B']
-              }
-              start={{ x: 0.15, y: 0 }}
-              end={{ x: 0.85, y: 1 }}
-              style={styles.shutterGradient}
-            >
-              {/* 3D Glossy Light Reflection (Top Arc) */}
-              <View style={styles.shutterGloss} />
+            {/* Soft Top Gloss Highlight */}
+            <View style={styles.buttonGloss} />
 
-              {/* Church Brand Emblem Proudly Centered */}
-              <View style={styles.logoCircleWrapper}>
-                <Image
-                  source={require('../../assets/logo.png')}
-                  style={styles.shutterLogo}
-                  resizeMode="contain"
-                />
-              </View>
-            </LinearGradient>
+            {/* Large White Camera Icon */}
+            <Ionicons name="camera" size={54} color="#FFFFFF" style={{ marginBottom: 4 }} />
+
+            {/* Bold White Action Text */}
+            <Text style={styles.giantButtonText}>CHECK IN</Text>
           </TouchableOpacity>
 
-          {/* Dedicated Navy Pill-Shaped "Check In →" Button Directly Below Circle */}
-          <TouchableOpacity
-            style={[
-              styles.pillCheckInButton,
-              (!activeActivity || loadingActivity) && styles.pillCheckInDisabled,
-            ]}
-            onPress={handleCheckInPress}
-            disabled={!activeActivity || loadingActivity}
-            activeOpacity={0.85}
-          >
-            <LinearGradient
-              colors={
-                activeActivity
-                  ? ['#173B70', '#1E40AF']
-                  : ['#94A3B8', '#64748B']
-              }
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.pillCheckInGradient}
-            >
-              <Ionicons
-                name="camera"
-                size={18}
-                color={activeActivity ? '#D4AF37' : '#FFFFFF'}
-                style={{ marginRight: 8 }}
-              />
-              <Text style={styles.pillCheckInText}>
-                {activeActivity ? 'Check In' : 'Attendance Closed'}
-              </Text>
-              <Ionicons
-                name="arrow-forward"
-                size={18}
-                color={activeActivity ? '#D4AF37' : '#FFFFFF'}
-                style={{ marginLeft: 8 }}
-              />
-            </LinearGradient>
-          </TouchableOpacity>
-
-          {/* Session Status Caption (Live Green Pill vs. Closed Gray Pill) */}
+          {/* Session Status Pill */}
           <View style={styles.sessionStatusRow}>
             {activeActivity ? (
               <View style={styles.statusLivePill}>
@@ -429,7 +358,7 @@ export default function HomeScreen({ navigation }) {
               <View style={styles.statusClosedPill}>
                 <View style={styles.closedGrayDot} />
                 <Text style={styles.statusClosedText}>
-                  ATTENDANCE CLOSED • Next session on scheduled cleaning date
+                  ATTENDANCE CLOSED • Next session on scheduled date
                 </Text>
               </View>
             )}
@@ -450,84 +379,7 @@ export default function HomeScreen({ navigation }) {
           </View>
         </View>
 
-        {/* 6. My Attendance History Section */}
-        <View style={styles.historySection}>
-          <View style={styles.historyHeaderRow}>
-            <Text style={styles.sectionHeading}>MY RECENT ATTENDANCE</Text>
-            <TouchableOpacity
-              onPress={() => navigation.navigate('MemberHistory')}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.viewAllLink}>View All →</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.historyTable}>
-            <View style={styles.tableHeaderRow}>
-              <Text style={[styles.tableHeaderCell, { flex: 2 }]}>Activity</Text>
-              <Text style={[styles.tableHeaderCell, { flex: 1.4 }]}>Date</Text>
-              <Text style={[styles.tableHeaderCell, { flex: 1.2 }]}>Check-in</Text>
-              <Text style={[styles.tableHeaderCell, { flex: 1, textAlign: 'right' }]}>Status</Text>
-            </View>
-
-            {recentHistory.length > 0 ? (
-              recentHistory.map((item, index) => {
-                const checkInDate = item.checked_in_at ? new Date(item.checked_in_at) : null;
-                const actName = item.activity?.name || 'Musician Session';
-                const dateStr = checkInDate
-                  ? checkInDate.toLocaleDateString([], { month: 'short', day: 'numeric' })
-                  : 'N/A';
-                const timeStr = checkInDate
-                  ? checkInDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                  : 'N/A';
-
-                return (
-                  <View
-                    key={item.id || index}
-                    style={[
-                      styles.tableRow,
-                      index === recentHistory.length - 1 && { borderBottomWidth: 0 },
-                    ]}
-                  >
-                    <Text style={[styles.tableCellName, { flex: 2 }]} numberOfLines={1}>
-                      {actName}
-                    </Text>
-                    <Text style={[styles.tableCell, { flex: 1.4 }]}>{dateStr}</Text>
-                    <Text style={[styles.tableCell, { flex: 1.2 }]}>{timeStr}</Text>
-                    <Text style={[styles.tableCellStatus, { flex: 1, textAlign: 'right' }]}>
-                      Present
-                    </Text>
-                  </View>
-                );
-              })
-            ) : (
-              <View style={styles.tableEmptyRow}>
-                <Text style={styles.tableEmptyText}>No recent attendance recorded</Text>
-              </View>
-            )}
-          </View>
-        </View>
-
-        {/* 7. Role-Conditional Admin Controls (For Super Admins) */}
-        {isSuperAdmin && (
-          <View style={styles.superAdminSection}>
-            <View style={styles.adminBadgeRow}>
-              <Ionicons name="shield-checkmark" size={16} color="#173B70" />
-              <Text style={styles.adminSectionTitle}>SUPER ADMIN PORTAL</Text>
-            </View>
-            <Text style={styles.adminSectionSubtitle}>Full administrative oversight & reporting</Text>
-
-            <TouchableOpacity
-              style={styles.adminDashboardFullButton}
-              onPress={() => navigation.navigate('SuperAdminDashboard')}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.adminDashboardFullButtonText}>Open Super Admin Dashboard →</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* 8. Footer Spiritual Quote with Gold Lines */}
+        {/* 6. Footer Spiritual Quote with Gold Lines */}
         <View style={styles.quoteWrapper}>
           <View style={styles.quoteGoldLine} />
           <Text style={styles.quoteText}>
@@ -572,7 +424,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     fontSize: 26,
     color: '#173B70',
-    opacity: 0.045, // Faint musical note texture
+    opacity: 0.045,
     fontWeight: '700',
   },
 
@@ -600,7 +452,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     fontSize: 18,
     color: '#D4AF37',
-    opacity: 0.16, // Gold musical notes floating in header
+    opacity: 0.16,
   },
   headerTopBar: {
     flexDirection: 'row',
@@ -704,103 +556,51 @@ const styles = StyleSheet.create({
   // Scroll Content
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingTop: 24,
     paddingBottom: 30,
   },
 
-  // 2. Central 3D Logo Ring & Pill Button Styles
-  shutterSection: {
+  // 2. Giant Button (Solid Navy, 4px Gold Border, Soft Navy Shadow)
+  buttonSection: {
     alignItems: 'center',
-    marginVertical: 10,
+    marginVertical: 18,
   },
-  shutterGoldRing: {
-    width: 160,
-    height: 160,
-    borderRadius: 80,
+  giantButton: {
+    width: 168,
+    height: 168,
+    borderRadius: 84,
+    backgroundColor: '#173B70', // Solid Navy
     borderWidth: 4,
-    borderColor: '#D4AF37', // Gold Ring
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#173B70',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.35,
-    shadowRadius: 22,
-    elevation: 12,
-  },
-  shutterGoldRingDisabled: {
-    opacity: 0.85,
-  },
-  shutterGradient: {
-    width: 144,
-    height: 144,
-    borderRadius: 72,
+    borderColor: '#D4AF37', // 4px Gold Border
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
     overflow: 'hidden',
+    // Mature, Premium Soft Navy Shadow
+    shadowColor: '#173B70',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
   },
-  shutterGloss: {
+  buttonGloss: {
     position: 'absolute',
     top: 0,
-    left: 8,
-    right: 8,
-    height: 65,
-    borderTopLeftRadius: 70,
-    borderTopRightRadius: 70,
-    backgroundColor: 'rgba(255, 255, 255, 0.22)',
+    left: 12,
+    right: 12,
+    height: 55,
+    borderTopLeftRadius: 80,
+    borderTopRightRadius: 80,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
   },
-  logoCircleWrapper: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    backgroundColor: '#FFFFFF',
-    padding: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#D4AF37', // Gold Border around logo
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  shutterLogo: {
-    width: '100%',
-    height: '100%',
-  },
-
-  // Dedicated Pill-Shaped "Check In →" Button
-  pillCheckInButton: {
-    marginTop: 18,
-    borderRadius: 25,
-    overflow: 'hidden',
-    ...shadows.lifted,
-    width: 220,
-  },
-  pillCheckInDisabled: {
-    opacity: 0.65,
-    elevation: 0,
-  },
-  pillCheckInGradient: {
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: '#D4AF37', // Gold Trim
-    borderRadius: 25,
-  },
-  pillCheckInText: {
+  giantButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontFamily: fonts.sansBold,
-    letterSpacing: 0.5,
+    letterSpacing: 1.5,
   },
   sessionStatusRow: {
-    marginTop: 12,
+    marginTop: 16,
   },
   statusLivePill: {
     flexDirection: 'row',
@@ -808,8 +608,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#ECFDF5',
     borderWidth: 1,
     borderColor: '#A7F3D0',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
     borderRadius: 20,
   },
   liveGreenDot: {
@@ -830,8 +630,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#F1F5F9',
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
     borderRadius: 20,
   },
   closedGrayDot: {
@@ -849,12 +649,12 @@ const styles = StyleSheet.create({
 
   // 3. Next Cleaning Date Card (Pure White with Crisp 2px Gold Border)
   dateCard: {
-    backgroundColor: '#FFFFFF', // Pure White (NO yellow)
+    backgroundColor: '#FFFFFF',
     borderRadius: 18,
     borderWidth: 2,
     borderColor: '#D4AF37', // Crisp 2px Gold Border
     padding: 18,
-    marginTop: 16,
+    marginTop: 12,
     marginBottom: 20,
     ...shadows.card,
   },
@@ -893,127 +693,12 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
-  // 4. History Section
-  historySection: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: '#E9EEF5',
-    padding: 18,
-    marginBottom: 20,
-    ...shadows.card,
-  },
-  historyHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  sectionHeading: {
-    fontSize: 12,
-    fontFamily: fonts.sansBold,
-    color: '#64748B',
-    letterSpacing: 0.6,
-  },
-  viewAllLink: {
-    fontSize: 12,
-    fontFamily: fonts.sansBold,
-    color: '#173B70',
-  },
-  historyTable: {
-    borderTopWidth: 1,
-    borderTopColor: '#F3F6FA',
-  },
-  tableHeaderRow: {
-    flexDirection: 'row',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E9EEF5',
-  },
-  tableHeaderCell: {
-    fontSize: 11,
-    fontFamily: fonts.sansBold,
-    color: '#64748B',
-    textTransform: 'uppercase',
-  },
-  tableRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F6FA',
-  },
-  tableCellName: {
-    fontSize: 13,
-    fontFamily: fonts.sansSemiBold,
-    color: '#0F172A',
-  },
-  tableCell: {
-    fontSize: 12,
-    fontFamily: fonts.sans,
-    color: '#475569',
-  },
-  tableCellStatus: {
-    fontSize: 12,
-    fontFamily: fonts.sansBold,
-    color: '#10B981',
-  },
-  tableEmptyRow: {
-    paddingVertical: 18,
-    alignItems: 'center',
-  },
-  tableEmptyText: {
-    fontSize: 12,
-    fontFamily: fonts.sans,
-    color: '#64748B',
-  },
-
-  // 5. Super Admin Quick Section
-  superAdminSection: {
-    backgroundColor: '#EEF4FF',
-    borderWidth: 1,
-    borderColor: '#DBEAFE',
-    borderRadius: 18,
-    padding: 16,
-    marginBottom: 20,
-    ...shadows.card,
-  },
-  adminBadgeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  adminSectionTitle: {
-    fontSize: 12,
-    fontFamily: fonts.sansBold,
-    color: '#173B70',
-    letterSpacing: 0.5,
-    marginLeft: 6,
-  },
-  adminSectionSubtitle: {
-    fontSize: 13,
-    fontFamily: fonts.sans,
-    color: '#475569',
-    marginBottom: 10,
-  },
-  adminDashboardFullButton: {
-    backgroundColor: '#173B70',
-    borderRadius: 10,
-    paddingVertical: 11,
-    alignItems: 'center',
-  },
-  adminDashboardFullButtonText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontFamily: fonts.sansBold,
-  },
-
-  // 6. Spiritual Quote Footer
+  // 4. Spiritual Quote Footer
   quoteWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginVertical: 16,
+    marginVertical: 18,
     paddingHorizontal: 10,
   },
   quoteGoldLine: {

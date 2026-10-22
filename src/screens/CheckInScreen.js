@@ -40,6 +40,14 @@ export default function CheckInScreen({ route, navigation }) {
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef(null);
 
+  const safeGoBack = () => {
+    if (navigation.canGoBack && navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('Home');
+    }
+  };
+
   useEffect(() => {
     runPreCheck();
   }, []);
@@ -135,7 +143,7 @@ export default function CheckInScreen({ route, navigation }) {
 
       if (!activity) {
         Alert.alert('Error', 'No activity selected.', [
-          { text: 'Back', onPress: () => navigation.goBack() },
+          { text: 'Back', onPress: () => safeGoBack() },
         ]);
         return;
       }
@@ -149,7 +157,7 @@ export default function CheckInScreen({ route, navigation }) {
           'Location Permission Required',
           'Location verification is required to record attendance. Please enable location in your device settings.',
           [
-            { text: 'Cancel', onPress: () => navigation.goBack(), style: 'cancel' },
+            { text: 'Cancel', onPress: () => safeGoBack(), style: 'cancel' },
             { text: 'Open Settings', onPress: () => Linking.openSettings() },
           ]
         );
@@ -190,7 +198,7 @@ export default function CheckInScreen({ route, navigation }) {
           Alert.alert(
             'Location Verification Failed',
             `We could not verify your location at the church premises (${Math.round(distance)}m away). Please move within the venue and try again.`,
-            [{ text: 'OK', onPress: () => navigation.goBack() }]
+            [{ text: 'OK', onPress: () => safeGoBack() }]
           );
           return;
         }
@@ -200,7 +208,7 @@ export default function CheckInScreen({ route, navigation }) {
           Alert.alert(
             'GPS Accuracy Low',
             `Your GPS signal is weak (±${Math.round(accuracy)}m). Move near a window or outside, then try again.`,
-            [{ text: 'OK', onPress: () => navigation.goBack() }]
+            [{ text: 'OK', onPress: () => safeGoBack() }]
           );
           return;
         }
@@ -230,7 +238,7 @@ export default function CheckInScreen({ route, navigation }) {
         Alert.alert(
           'Attendance Closed',
           'This attendance activity is no longer available or has concluded.',
-          [{ text: 'OK', onPress: () => navigation.goBack() }]
+          [{ text: 'OK', onPress: () => safeGoBack() }]
         );
         return;
       }
@@ -246,7 +254,7 @@ export default function CheckInScreen({ route, navigation }) {
             'Camera Permission Required',
             'Camera access is required to capture your verification photo.',
             [
-              { text: 'Cancel', onPress: () => navigation.goBack(), style: 'cancel' },
+              { text: 'Cancel', onPress: () => safeGoBack(), style: 'cancel' },
               { text: 'Open Settings', onPress: () => Linking.openSettings() },
             ]
           );
@@ -260,7 +268,7 @@ export default function CheckInScreen({ route, navigation }) {
       Alert.alert(
         'Verification Error',
         error.message || 'An unexpected error occurred during verification.',
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
+        [{ text: 'OK', onPress: () => safeGoBack() }]
       );
     }
   };
@@ -356,7 +364,7 @@ export default function CheckInScreen({ route, navigation }) {
         Alert.alert(
           'Offline Check-In Saved',
           "No network connection detected. Your verification record is saved locally and will sync when you're back online.",
-          [{ text: 'OK', onPress: () => navigation.goBack() }]
+          [{ text: 'OK', onPress: () => safeGoBack() }]
         );
       } catch (offlineErr) {
         Alert.alert(
@@ -588,7 +596,7 @@ export default function CheckInScreen({ route, navigation }) {
             <View style={styles.cameraTopBar} pointerEvents="box-none">
               <TouchableOpacity
                 style={styles.closeCameraButton}
-                onPress={() => navigation.goBack()}
+                onPress={safeGoBack}
                 activeOpacity={0.7}
               >
                 <Ionicons name="close" size={20} color="#FFFFFF" />
