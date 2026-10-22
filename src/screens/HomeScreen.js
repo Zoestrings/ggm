@@ -27,6 +27,7 @@ export default function HomeScreen({ navigation }) {
   const [userProfile, setUserProfile] = useState(null);
   const [loadingUser, setLoadingUser] = useState(true);
   const [activeActivity, setActiveActivity] = useState(null);
+  const [nextActivityDate, setNextActivityDate] = useState('3rd November');
   const [loadingActivity, setLoadingActivity] = useState(true);
   const [recentHistory, setRecentHistory] = useState([]);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
@@ -94,7 +95,6 @@ export default function HomeScreen({ navigation }) {
               setUserProfile(profile);
               await AsyncStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(profile));
             } else {
-              // Fallback to auth metadata and self-heal into public.users
               const meta = currentUser.user_metadata || {};
               const healedProfile = {
                 id: currentUser.id,
@@ -124,7 +124,7 @@ export default function HomeScreen({ navigation }) {
             return;
           }
 
-          // 3. Query open activity from Supabase
+          // 4. Query open activity from Supabase
           setLoadingActivity(true);
           const now = new Date().toISOString();
           const { data: activities, error } = await supabase
@@ -140,12 +140,35 @@ export default function HomeScreen({ navigation }) {
             console.error('Error fetching activities:', error.message);
           }
 
+          // Query next scheduled cleaning date
+          const { data: upcomingActs } = await supabase
+            .from('activities')
+            .select('activity_date, name')
+            .gte('closes_at', now)
+            .order('opens_at', { ascending: true })
+            .limit(1);
+
           if (isMounted) {
-            setActiveActivity(activities && activities.length > 0 ? activities[0] : null);
+            if (activities && activities.length > 0) {
+              setActiveActivity(activities[0]);
+            } else {
+              setActiveActivity(null);
+            }
+
+            if (upcomingActs && upcomingActs.length > 0 && upcomingActs[0].activity_date) {
+              const d = new Date(upcomingActs[0].activity_date);
+              const day = d.getDate();
+              const suffix = (day % 10 === 1 && day !== 11) ? 'st' : (day % 10 === 2 && day !== 12) ? 'nd' : (day % 10 === 3 && day !== 13) ? 'rd' : 'th';
+              const monthStr = d.toLocaleDateString('en-US', { month: 'long' });
+              setNextActivityDate(`${day}${suffix} ${monthStr}`);
+            } else {
+              setNextActivityDate('3rd November');
+            }
+
             setLoadingActivity(false);
           }
 
-          // 4. Fetch recent 3 attendance records for the history table
+          // 5. Fetch recent 3 attendance records for the history table
           const { data: historyData } = await supabase
             .from('attendance')
             .select(`
@@ -166,7 +189,7 @@ export default function HomeScreen({ navigation }) {
             setRecentHistory(historyData);
           }
 
-          // 5. Query unread notifications count
+          // 6. Query unread notifications count
           try {
             const { count: unreadCount } = await supabase
               .from('notifications')
@@ -177,16 +200,12 @@ export default function HomeScreen({ navigation }) {
             if (isMounted) {
               setUnreadNotifications(unreadCount || 0);
             }
-          } catch (_notifErr) {
-            // Notifications table is optional
-          }
+          } catch (_notifErr) {}
 
-          // 6. Try syncing any queued offline check-ins
+          // 7. Try syncing any queued offline check-ins
           try {
             await syncPendingCheckins();
-          } catch (_syncErr) {
-            // Sync is best-effort
-          }
+          } catch (_syncErr) {}
         } catch (err) {
           console.error('Error in HomeScreen loadData:', err);
           if (isMounted) {
@@ -204,31 +223,8 @@ export default function HomeScreen({ navigation }) {
     }, [])
   );
 
-  const handleSignOut = async () => {
-    Alert.alert(
-      'Log Out',
-      'Are you sure you want to log out of GGM Instrumentalists Attendance Portal?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Log Out',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await AsyncStorage.removeItem(PROFILE_CACHE_KEY);
-              await supabase.auth.signOut();
-              navigation.replace('Login');
-            } catch (error) {
-              Alert.alert('Error', error.message || 'Failed to sign out.');
-            }
-          },
-        },
-      ]
-    );
-  };
-
   const handleCheckInPress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     if (activeActivity) {
       navigation.navigate('CheckIn', { activity: activeActivity });
     }
@@ -237,150 +233,162 @@ export default function HomeScreen({ navigation }) {
   if (loadingUser && !user) {
     return (
       <View style={[styles.container, styles.centered]}>
-        <ActivityIndicator size="large" color={colors.primary} />
+        <ActivityIndicator size="large" color="#173B70" />
       </View>
     );
   }
 
   const meta = user?.user_metadata || {};
   const name = userProfile?.name || meta.full_name || 'Member';
-  const instrument = userProfile?.instrument || meta.instrument || '';
-  const phone = userProfile?.phone || meta.phone || '';
-  const email = userProfile?.email || user?.email || '';
-  
   const role = userProfile?.role || meta.role || 'member';
   const isSuperAdmin = role === 'super_admin';
   const isSubAdmin = role === 'sub_admin';
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      {/* Background Subtle Watermark */}
+    <View style={styles.container}>
+      {/* Background Approved Watermark */}
       <Image
         source={require('../../assets/logo.png')}
         style={styles.watermark}
         resizeMode="contain"
       />
 
-      {/* Clean White Institutional Header */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <Image
-            source={require('../../assets/logo.png')}
-            style={styles.headerLogo}
-            resizeMode="contain"
-          />
-          <View style={styles.headerTextContainer}>
-            <Text style={styles.headerOrgTitle}>GGM Instrumentalists</Text>
-            <Text style={styles.headerOrgSubtitle}>Gods Ministry Inc.</Text>
+      {/* 1. Header: Dark Navy with Curved Gold Bottom Border */}
+      <View style={styles.headerWrapper}>
+        <SafeAreaView edges={['top', 'left', 'right']} style={styles.headerSafeArea}>
+          <View style={styles.headerTopBar}>
+            <View style={styles.headerLeft}>
+              <View style={styles.headerLogoCircle}>
+                <Image
+                  source={require('../../assets/logo.png')}
+                  style={styles.headerLogo}
+                  resizeMode="contain"
+                />
+              </View>
+              <View style={styles.headerBrandTexts}>
+                <Text style={styles.headerBrandTitle}>GGM Instrumentalists</Text>
+                <Text style={styles.headerBrandSubtitle}>God's Ministry Inc.</Text>
+              </View>
+            </View>
+
+            <View style={styles.headerRight}>
+              <TouchableOpacity
+                style={styles.headerBellButton}
+                onPress={() => navigation.navigate('Notifications')}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="notifications" size={20} color="#D4AF37" />
+                {unreadNotifications > 0 && <View style={styles.unreadBadgeDot} />}
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
-        <View style={styles.headerRight}>
-          <TouchableOpacity
-            style={styles.headerIconButton}
-            onPress={() => navigation.navigate('Notifications')}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="notifications-outline" size={21} color={colors.textSecondary} />
-            {unreadNotifications > 0 && <View style={styles.unreadBadgeDot} />}
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.headerIconButton}
-            onPress={() => navigation.navigate('AccountSettings')}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="settings-outline" size={21} color={colors.textSecondary} />
-          </TouchableOpacity>
-        </View>
+
+          {/* Welcome Greeting with Gold Motif */}
+          <View style={styles.welcomeContainer}>
+            <View style={styles.welcomeMotifRow}>
+              <Ionicons name="sparkles" size={14} color="#D4AF37" />
+              <Text style={styles.welcomeAuraText}>SANCTUARY MUSIC MINISTRY</Text>
+              <Ionicons name="sparkles" size={14} color="#D4AF37" />
+            </View>
+            <Text style={styles.welcomeGreeting} numberOfLines={1}>
+              Welcome, {name}
+            </Text>
+          </View>
+        </SafeAreaView>
+
+        {/* Curved Gold Accent Line at bottom of header */}
+        <View style={styles.goldCurveLine} />
       </View>
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Welcome Section */}
-        <View style={styles.welcomeSection}>
-          <Text style={styles.welcomeGreeting}>Welcome, {name}</Text>
-          <Text style={styles.welcomeSubhead}>GGM Instrumentalists</Text>
-          <Text style={styles.welcomePortalLabel}>Attendance Portal</Text>
-        </View>
+        {/* 2. The 3D Glossy Circular Check-In Button */}
+        <View style={styles.shutterSection}>
+          <View style={styles.shutterGoldRing}>
+            <TouchableOpacity
+              style={[
+                styles.shutter3DButton,
+                (!activeActivity || loadingActivity) && styles.shutter3DButtonDisabled,
+              ]}
+              onPress={handleCheckInPress}
+              disabled={!activeActivity || loadingActivity}
+              activeOpacity={0.85}
+            >
+              <LinearGradient
+                colors={
+                  activeActivity
+                    ? ['#2563EB', '#173B70', '#0F2444']
+                    : ['#94A3B8', '#64748B', '#334155']
+                }
+                start={{ x: 0.1, y: 0 }}
+                end={{ x: 0.9, y: 1 }}
+                style={styles.shutterGradient}
+              >
+                {/* 3D Glossy Light Reflection (Top Arc) */}
+                <View style={styles.shutterGloss} />
 
-        {/* Current Activity Section */}
-        <View style={styles.activitySection}>
-          <View style={styles.activityTopRow}>
-            <Text style={styles.sectionHeading}>CURRENT ACTIVITY</Text>
-            {loadingActivity ? (
-              <ActivityIndicator size="small" color={colors.primary} />
-            ) : activeActivity ? (
-              <View style={styles.statusBadgeOpen}>
-                <Text style={styles.statusTextOpen}>● OPEN</Text>
+                {/* Shutter Icon & Text */}
+                <View style={styles.shutterContent}>
+                  {loadingActivity ? (
+                    <ActivityIndicator size="large" color="#FFFFFF" />
+                  ) : (
+                    <>
+                      <View style={styles.checkIconOuter}>
+                        <Ionicons name="checkmark" size={38} color="#FFFFFF" />
+                      </View>
+                      <Text style={styles.shutterMainText}>
+                        {activeActivity ? 'REGISTER' : 'ATTENDANCE'}
+                      </Text>
+                      <Text style={styles.shutterSubText}>
+                        {activeActivity ? 'CHECK-IN' : 'PORTAL CLOSED'}
+                      </Text>
+                    </>
+                  )}
+                </View>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+
+          {/* Session Status Pill below Button */}
+          <View style={styles.statusPillContainer}>
+            {activeActivity ? (
+              <View style={styles.statusPillOpen}>
+                <View style={styles.statusDotLive} />
+                <Text style={styles.statusPillOpenText}>
+                  LIVE SESSION OPEN • Closes at {new Date(activeActivity.closes_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </Text>
               </View>
             ) : (
-              <View style={styles.statusBadgeClosed}>
-                <Text style={styles.statusTextClosed}>CLOSED</Text>
+              <View style={styles.statusPillClosed}>
+                <Ionicons name="time-outline" size={13} color="#64748B" />
+                <Text style={styles.statusPillClosedText}>
+                  Next session opens on scheduled date
+                </Text>
               </View>
             )}
           </View>
-
-          {loadingActivity ? (
-            <Text style={styles.activityLoadingText}>Checking scheduled sessions...</Text>
-          ) : activeActivity ? (
-            <View style={styles.activityInfoBox}>
-              <Text style={styles.activityTitle}>{activeActivity.name}</Text>
-              <View style={styles.activityMetaRow}>
-                <Ionicons name="time-outline" size={15} color={colors.textMuted} />
-                <Text style={styles.activityClosingTime}>
-                  Closes at:{' '}
-                  {new Date(activeActivity.closes_at).toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </Text>
-              </View>
-            </View>
-          ) : (
-            <View style={styles.noActivityBox}>
-              <Text style={styles.noActivityTitle}>No activity open right now</Text>
-              <Text style={styles.noActivitySubtitle}>
-                Attendance opens on the first Tuesday of every month at 6:00 AM.
-              </Text>
-            </View>
-          )}
-
-          {/* Primary CTA Check Attendance Button with Gradient & Haptics */}
-          <TouchableOpacity
-            style={[
-              styles.checkAttendanceButtonWrapper,
-              (!activeActivity || loadingActivity) && styles.checkAttendanceButtonDisabled,
-            ]}
-            onPress={handleCheckInPress}
-            disabled={!activeActivity || loadingActivity}
-            activeOpacity={0.85}
-          >
-            <LinearGradient
-              colors={
-                (!activeActivity || loadingActivity)
-                  ? ['#CBD5E1', '#94A3B8']
-                  : colors.primaryGradient
-              }
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.checkAttendanceGradient}
-            >
-              <Ionicons
-                name="checkmark-circle-outline"
-                size={20}
-                color="#FFFFFF"
-                style={{ marginRight: 8 }}
-              />
-              <Text style={styles.checkAttendanceButtonText}>REGISTER ATTENDANCE</Text>
-            </LinearGradient>
-          </TouchableOpacity>
         </View>
 
-        {/* My Attendance History Section */}
+        {/* 3. The Next Cleaning Date Card */}
+        <View style={styles.dateCard}>
+          <View style={styles.dateCardRow}>
+            <View style={styles.dateIconWrapper}>
+              <Ionicons name="calendar" size={26} color="#D4AF37" />
+            </View>
+            <View style={styles.dateInfoCol}>
+              <Text style={styles.dateCardLabel}>NEXT CLEANING DATE</Text>
+              <Text style={styles.dateCardValue}>{nextActivityDate}</Text>
+              <Text style={styles.dateCardSub}>God's Grace Ministry Warri HQ • 6:00 AM</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* 4. My Attendance History Section */}
         <View style={styles.historySection}>
           <View style={styles.historyHeaderRow}>
-            <Text style={styles.sectionHeading}>MY ATTENDANCE HISTORY</Text>
+            <Text style={styles.sectionHeading}>MY RECENT ATTENDANCE</Text>
             <TouchableOpacity
               onPress={() => navigation.navigate('MemberHistory')}
               activeOpacity={0.7}
@@ -402,7 +410,7 @@ export default function HomeScreen({ navigation }) {
                 const checkInDate = item.checked_in_at ? new Date(item.checked_in_at) : null;
                 const actName = item.activity?.name || 'Musician Session';
                 const dateStr = checkInDate
-                  ? checkInDate.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
+                  ? checkInDate.toLocaleDateString([], { month: 'short', day: 'numeric' })
                   : 'N/A';
                 const timeStr = checkInDate
                   ? checkInDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -435,73 +443,14 @@ export default function HomeScreen({ navigation }) {
           </View>
         </View>
 
-        {/* Role-Conditional Admin Controls (Added Below Member Content) */}
+        {/* 5. Role-Conditional Admin Controls (For Super Admins) */}
         {isSuperAdmin && (
           <View style={styles.superAdminSection}>
-            <View style={styles.adminTextGroup}>
-              <View style={styles.adminBadgeRow}>
-                <Ionicons name="shield-checkmark" size={16} color={colors.primary} />
-                <Text style={styles.adminSectionTitle}>SUPER ADMIN PORTAL</Text>
-              </View>
-              <Text style={styles.adminSectionSubtitle}>Full administrative oversight & reporting</Text>
+            <View style={styles.adminBadgeRow}>
+              <Ionicons name="shield-checkmark" size={16} color="#173B70" />
+              <Text style={styles.adminSectionTitle}>SUPER ADMIN PORTAL</Text>
             </View>
-
-            {/* Quick Actions Grid */}
-            <View style={styles.adminActionsGrid}>
-              <TouchableOpacity
-                style={styles.actionGridItem}
-                onPress={() => navigation.navigate('AttendanceList', { activity: activeActivity })}
-                activeOpacity={0.75}
-              >
-                <Ionicons name="list-outline" size={18} color={colors.primary} />
-                <Text style={styles.actionGridText}>Today's List</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.actionGridItem}
-                onPress={() => navigation.navigate('GenerateReport', { activity: activeActivity })}
-                activeOpacity={0.75}
-              >
-                <Ionicons name="document-text-outline" size={18} color={colors.primary} />
-                <Text style={styles.actionGridText}>PDF Reports</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.actionGridItem}
-                onPress={() => navigation.navigate('TopPerformers')}
-                activeOpacity={0.75}
-              >
-                <Ionicons name="trophy-outline" size={18} color="#D97706" />
-                <Text style={styles.actionGridText}>Top Performers</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.actionGridItem}
-                onPress={() => navigation.navigate('ManageRoles')}
-                activeOpacity={0.75}
-              >
-                <Ionicons name="people-outline" size={18} color={colors.primary} />
-                <Text style={styles.actionGridText}>Manage Roles</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.actionGridItem}
-                onPress={() => navigation.navigate('AllAttendance')}
-                activeOpacity={0.75}
-              >
-                <Ionicons name="calendar-outline" size={18} color={colors.primary} />
-                <Text style={styles.actionGridText}>All Records</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.actionGridItem}
-                onPress={() => navigation.navigate('AuditLog')}
-                activeOpacity={0.75}
-              >
-                <Ionicons name="shield-outline" size={18} color={colors.primary} />
-                <Text style={styles.actionGridText}>Audit Log</Text>
-              </TouchableOpacity>
-            </View>
+            <Text style={styles.adminSectionSubtitle}>Full administrative oversight & reporting</Text>
 
             <TouchableOpacity
               style={styles.adminDashboardFullButton}
@@ -513,163 +462,422 @@ export default function HomeScreen({ navigation }) {
           </View>
         )}
 
-        {isSubAdmin && (
-          <View style={styles.subAdminSection}>
-            <View style={styles.adminBadgeRow}>
-              <Ionicons name="eye-outline" size={16} color={colors.primary} />
-              <Text style={styles.adminSectionTitle}>SUB ADMIN PORTAL</Text>
-            </View>
-            <Text style={styles.adminSectionSubtitle}>
-              View today's check-in list with member photos. (Read-only)
-            </Text>
-            <TouchableOpacity
-              style={styles.subAdminLinkButton}
-              onPress={() => navigation.navigate('SubAdminAttendance', { activity: activeActivity })}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="people" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
-              <Text style={styles.subAdminLinkButtonText}>View Current Activity Attendance →</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        <View style={{ height: 40 }} />
+        {/* 6. Footer Spiritual Quote with Gold Lines */}
+        <View style={styles.quoteWrapper}>
+          <View style={styles.quoteGoldLine} />
+          <Text style={styles.quoteText}>
+            "Affecting souls for Christ through music"
+          </Text>
+          <View style={styles.quoteGoldLine} />
+        </View>
       </ScrollView>
 
-      {/* Clean Fixed Bottom Navigation Bar */}
+      {/* 7. Bottom Navigation Tab Bar (Solid Navy, Gold active indicator) */}
       <View style={styles.bottomNav}>
-        <TouchableOpacity style={styles.navItem} activeOpacity={0.7}>
-          <Ionicons name="home" size={22} color={colors.primary} />
-          <Text style={[styles.navItemText, styles.navItemTextActive]}>Home</Text>
+        <TouchableOpacity style={styles.navItem} activeOpacity={0.8}>
+          <Ionicons name="home" size={22} color="#D4AF37" />
+          <Text style={styles.navItemTextActive}>Home</Text>
+          <View style={styles.activeGoldBar} />
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.navItem}
           onPress={() => navigation.navigate('MemberHistory')}
-          activeOpacity={0.7}
+          activeOpacity={0.8}
         >
-          <Ionicons name="time-outline" size={22} color={colors.textLight} />
-          <Text style={styles.navItemText}>Attendance History</Text>
+          <Ionicons name="time-outline" size={22} color="#94A3B8" />
+          <Text style={styles.navItemTextInactive}>History</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.navItem}
-          onPress={() => navigation.navigate('Profile')}
-          activeOpacity={0.7}
+          onPress={() => navigation.navigate('AccountSettings')}
+          activeOpacity={0.8}
         >
-          <Ionicons name="person-outline" size={22} color={colors.textLight} />
-          <Text style={styles.navItemText}>Profile</Text>
+          <Ionicons name="person-outline" size={22} color="#94A3B8" />
+          <Text style={styles.navItemTextInactive}>Profile</Text>
         </TouchableOpacity>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FFFFFF', // Strict Pure White
   },
   watermark: {
     position: 'absolute',
     width: 320,
     height: 320,
     alignSelf: 'center',
-    top: '28%',
-    opacity: 0.06,
+    top: '30%',
+    opacity: 0.06, // Strict approved faint watermark
     zIndex: 0,
   },
   centered: {
     justifyContent: 'center',
     alignItems: 'center',
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.pagePadding,
-    paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+
+  // 1. Header Styles
+  headerWrapper: {
+    backgroundColor: '#173B70', // Dark Navy
+    borderBottomLeftRadius: 26,
+    borderBottomRightRadius: 26,
+    overflow: 'hidden',
+    ...shadows.lifted,
     zIndex: 10,
+  },
+  headerSafeArea: {
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 18,
+  },
+  headerTopBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
   },
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  headerLogo: {
-    width: 46,
-    height: 46,
-    marginRight: 10,
+  headerLogoCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FFFFFF',
+    padding: 3,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
-  headerTextContainer: {
+  headerLogo: {
+    width: '100%',
+    height: '100%',
+  },
+  headerBrandTexts: {
     justifyContent: 'center',
   },
-  headerOrgTitle: {
+  headerBrandTitle: {
     fontSize: 16,
-    fontWeight: '700',
-    color: colors.textPrimary,
+    fontFamily: fonts.sansBold,
+    color: '#FFFFFF',
     letterSpacing: -0.2,
   },
-  headerOrgSubtitle: {
+  headerBrandSubtitle: {
     fontSize: 12,
-    fontWeight: '500',
-    color: colors.textMuted,
+    fontFamily: fonts.sansMedium,
+    color: '#D4AF37', // Gold Accent
     marginTop: 1,
   },
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
   },
-  headerIconButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
+  headerBellButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
     position: 'relative',
+    borderWidth: 1,
+    borderColor: 'rgba(212, 175, 55, 0.3)',
   },
   unreadBadgeDot: {
     position: 'absolute',
-    top: 6,
-    right: 6,
+    top: 8,
+    right: 8,
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#DC2626',
+    backgroundColor: '#EF4444',
     borderWidth: 1.5,
-    borderColor: '#FFFFFF',
+    borderColor: '#173B70',
   },
+  welcomeContainer: {
+    marginTop: 4,
+  },
+  welcomeMotifRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  welcomeAuraText: {
+    fontSize: 11,
+    fontFamily: fonts.sansBold,
+    color: '#D4AF37',
+    letterSpacing: 1,
+  },
+  welcomeGreeting: {
+    fontSize: 26,
+    fontFamily: fonts.serif, // Playfair Display
+    color: '#FFFFFF',
+    letterSpacing: -0.3,
+  },
+  goldCurveLine: {
+    height: 4,
+    backgroundColor: '#D4AF37', // Gold curved bottom border
+    width: '100%',
+  },
+
+  // Scroll Content
   scrollContent: {
-    paddingHorizontal: spacing.pagePadding,
-    paddingTop: 16,
-    paddingBottom: 20,
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 30,
   },
+
+  // 2. 3D Shutter Button Styles
+  shutterSection: {
+    alignItems: 'center',
+    marginVertical: 12,
+  },
+  shutterGoldRing: {
+    width: 172,
+    height: 172,
+    borderRadius: 86,
+    borderWidth: 4,
+    borderColor: '#D4AF37', // Gold Ring
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#173B70',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.28,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  shutter3DButton: {
+    width: 156,
+    height: 156,
+    borderRadius: 78,
+    overflow: 'hidden',
+  },
+  shutter3DButtonDisabled: {
+    opacity: 0.85,
+  },
+  shutterGradient: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  shutterGloss: {
+    position: 'absolute',
+    top: 0,
+    left: 10,
+    right: 10,
+    height: 70,
+    borderTopLeftRadius: 75,
+    borderTopRightRadius: 75,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  shutterContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 2,
+  },
+  checkIconOuter: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  shutterMainText: {
+    fontSize: 15,
+    fontFamily: fonts.sansBold,
+    color: '#FFFFFF',
+    letterSpacing: 1.2,
+  },
+  shutterSubText: {
+    fontSize: 11,
+    fontFamily: fonts.sansMedium,
+    color: '#D4AF37', // Gold Subtext
+    letterSpacing: 0.6,
+    marginTop: 2,
+  },
+  statusPillContainer: {
+    marginTop: 14,
+  },
+  statusPillOpen: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  statusDotLive: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#10B981',
+    marginRight: 7,
+  },
+  statusPillOpenText: {
+    fontSize: 12,
+    fontFamily: fonts.sansBold,
+    color: '#047857',
+  },
+  statusPillClosed: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  statusPillClosedText: {
+    fontSize: 12,
+    fontFamily: fonts.sansMedium,
+    color: '#64748B',
+    marginLeft: 5,
+  },
+
+  // 3. Next Cleaning Date Card
+  dateCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    borderWidth: 2,
+    borderColor: '#D4AF37', // Thick Gold Border
+    padding: 18,
+    marginTop: 16,
+    marginBottom: 20,
+    ...shadows.card,
+  },
+  dateCardRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  dateIconWrapper: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: 'rgba(212, 175, 55, 0.12)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
+  },
+  dateInfoCol: {
+    flex: 1,
+  },
+  dateCardLabel: {
+    fontSize: 11,
+    fontFamily: fonts.sansBold,
+    color: '#64748B',
+    letterSpacing: 0.8,
+  },
+  dateCardValue: {
+    fontSize: 22,
+    fontFamily: fonts.serif, // Playfair Display
+    color: '#173B70', // Navy
+    marginTop: 2,
+  },
+  dateCardSub: {
+    fontSize: 12,
+    fontFamily: fonts.sans,
+    color: '#94A3B8',
+    marginTop: 2,
+  },
+
+  // 4. History Section
+  historySection: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#E9EEF5',
+    padding: 18,
+    marginBottom: 20,
+    ...shadows.card,
+  },
+  historyHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  sectionHeading: {
+    fontSize: 12,
+    fontFamily: fonts.sansBold,
+    color: '#64748B',
+    letterSpacing: 0.6,
+  },
+  viewAllLink: {
+    fontSize: 12,
+    fontFamily: fonts.sansBold,
+    color: '#173B70',
+  },
+  historyTable: {
+    borderTopWidth: 1,
+    borderTopColor: '#F3F6FA',
+  },
+  tableHeaderRow: {
+    flexDirection: 'row',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E9EEF5',
+  },
+  tableHeaderCell: {
+    fontSize: 11,
+    fontFamily: fonts.sansBold,
+    color: '#64748B',
+    textTransform: 'uppercase',
+  },
+  tableRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F6FA',
+  },
+  tableCellName: {
+    fontSize: 13,
+    fontFamily: fonts.sansSemiBold,
+    color: '#0F172A',
+  },
+  tableCell: {
+    fontSize: 12,
+    fontFamily: fonts.sans,
+    color: '#475569',
+  },
+  tableCellStatus: {
+    fontSize: 12,
+    fontFamily: fonts.sansBold,
+    color: '#10B981',
+  },
+  tableEmptyRow: {
+    paddingVertical: 18,
+    alignItems: 'center',
+  },
+  tableEmptyText: {
+    fontSize: 12,
+    fontFamily: fonts.sans,
+    color: '#64748B',
+  },
+
+  // 5. Super Admin Quick Section
   superAdminSection: {
-    backgroundColor: colors.primaryLight,
+    backgroundColor: '#EEF4FF',
     borderWidth: 1,
-    borderColor: colors.primaryBorder,
+    borderColor: '#DBEAFE',
     borderRadius: 18,
     padding: 16,
     marginBottom: 20,
     ...shadows.card,
-  },
-  subAdminSection: {
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 18,
-    padding: 16,
-    marginBottom: 20,
-    ...shadows.card,
-  },
-  adminTextGroup: {
-    marginBottom: 12,
   },
   adminBadgeRow: {
     flexDirection: 'row',
@@ -678,43 +886,19 @@ const styles = StyleSheet.create({
   },
   adminSectionTitle: {
     fontSize: 12,
-    fontWeight: '700',
-    color: colors.primary,
+    fontFamily: fonts.sansBold,
+    color: '#173B70',
     letterSpacing: 0.5,
     marginLeft: 6,
   },
   adminSectionSubtitle: {
     fontSize: 13,
-    color: colors.textSecondary,
-    lineHeight: 18,
-  },
-  adminActionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 14,
-  },
-  actionGridItem: {
-    flexBasis: '31%',
-    flexGrow: 1,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  actionGridText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: colors.textPrimary,
-    marginTop: 4,
-    textAlign: 'center',
+    fontFamily: fonts.sans,
+    color: '#475569',
+    marginBottom: 10,
   },
   adminDashboardFullButton: {
-    backgroundColor: colors.primary,
+    backgroundColor: '#173B70',
     borderRadius: 10,
     paddingVertical: 11,
     alignItems: 'center',
@@ -722,314 +906,67 @@ const styles = StyleSheet.create({
   adminDashboardFullButtonText: {
     color: '#FFFFFF',
     fontSize: 13,
-    fontWeight: '700',
+    fontFamily: fonts.sansBold,
   },
-  subAdminLinkButton: {
+
+  // 6. Spiritual Quote Footer
+  quoteWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.primary,
-    borderRadius: 10,
-    paddingVertical: 11,
-    paddingHorizontal: 14,
-    marginTop: 10,
+    marginVertical: 16,
+    paddingHorizontal: 10,
   },
-  subAdminLinkButtonText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  welcomeSection: {
-    marginBottom: 20,
-  },
-  welcomeGreeting: {
-    fontSize: 24,
-    fontFamily: fonts.serif,
-    color: colors.textPrimary,
-    letterSpacing: -0.3,
-  },
-  welcomeSubhead: {
-    fontSize: 14,
-    fontFamily: fonts.sansBold,
-    color: colors.primary,
-    marginTop: 3,
-  },
-  welcomePortalLabel: {
-    fontSize: 13,
-    fontFamily: fonts.sans,
-    color: colors.textMuted,
-  },
-  profileSection: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 18,
-    padding: 16,
-    marginBottom: 20,
-    ...shadows.card,
-  },
-  profileHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  profileAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  profileAvatarText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  profileNameGroup: {
+  quoteGoldLine: {
     flex: 1,
+    height: 1,
+    backgroundColor: '#D4AF37', // Gold line
+    opacity: 0.45,
   },
-  profileName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
-  instrumentBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: colors.neutralBg,
-    borderWidth: 1,
-    borderColor: colors.neutralBorder,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
-    marginTop: 4,
-  },
-  instrumentBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: colors.neutralText,
-  },
-  profileDetailsRow: {
-    flexDirection: 'row',
-    borderTopWidth: 1,
-    borderTopColor: colors.borderLight,
-    paddingTop: 12,
-  },
-  profileDetailCol: {
-    flex: 1,
-  },
-  profileDetailLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: colors.textMuted,
-    textTransform: 'uppercase',
-    marginBottom: 2,
-  },
-  profileDetailValue: {
-    fontSize: 13,
-    color: colors.textPrimary,
-    fontWeight: '500',
-  },
-  activitySection: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 18,
-    padding: 16,
-    marginBottom: 20,
-    ...shadows.card,
-  },
-  activityTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  sectionHeading: {
+  quoteText: {
     fontSize: 12,
-    fontFamily: fonts.sansBold,
-    color: colors.textMuted,
-    letterSpacing: 0.6,
-  },
-  statusBadgeOpen: {
-    backgroundColor: colors.successBg,
-    borderWidth: 1,
-    borderColor: colors.successBorder,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 4,
-  },
-  statusTextOpen: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.successText,
-  },
-  statusBadgeClosed: {
-    backgroundColor: colors.neutralBg,
-    borderWidth: 1,
-    borderColor: colors.neutralBorder,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 4,
-  },
-  statusTextClosed: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.textMuted,
-  },
-  activityInfoBox: {
-    marginBottom: 16,
-  },
-  activityTitle: {
-    fontSize: 16,
-    fontFamily: fonts.sansBold,
-    color: colors.textPrimary,
-    marginBottom: 6,
-  },
-  activityMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  activityClosingTime: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    marginLeft: 5,
-    fontWeight: '500',
-  },
-  activityLoadingText: {
-    fontSize: 13,
-    color: colors.textMuted,
-    marginVertical: 10,
-  },
-  noActivityBox: {
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  noActivityTitle: {
-    fontSize: 14,
-    fontFamily: fonts.sansSemiBold,
-    color: colors.textPrimary,
-    marginBottom: 4,
-  },
-  noActivitySubtitle: {
-    fontSize: 12,
-    fontFamily: fonts.sans,
-    color: colors.textMuted,
+    fontFamily: fonts.serifSemiBold,
+    fontStyle: 'italic',
+    color: '#173B70',
+    marginHorizontal: 12,
     textAlign: 'center',
-    maxWidth: 260,
   },
-  checkAttendanceButtonWrapper: {
-    borderRadius: 14,
-    overflow: 'hidden',
-    width: '100%',
-    ...shadows.lifted,
-  },
-  checkAttendanceButtonDisabled: {
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  checkAttendanceGradient: {
-    minHeight: 54,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-  },
-  checkAttendanceButtonText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontFamily: fonts.sansBold,
-    letterSpacing: 0.4,
-  },
-  historySection: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 18,
-    padding: 16,
-    marginBottom: 20,
-    ...shadows.card,
-  },
-  historyHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  viewAllLink: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.primary,
-  },
-  historyTable: {
-    borderTopWidth: 1,
-    borderTopColor: colors.borderLight,
-  },
-  tableHeaderRow: {
-    flexDirection: 'row',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  tableHeaderCell: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.textMuted,
-    textTransform: 'uppercase',
-  },
-  tableRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
-  },
-  tableCellName: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.textPrimary,
-  },
-  tableCell: {
-    fontSize: 12,
-    color: colors.textSecondary,
-  },
-  tableCellStatus: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.successText,
-  },
-  tableEmptyRow: {
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
-  tableEmptyText: {
-    fontSize: 12,
-    color: colors.textMuted,
-  },
+
+  // 7. Bottom Tab Bar
   bottomNav: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#173B70', // Solid Navy
     borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingVertical: 10,
-    paddingBottom: 14,
+    borderTopColor: 'rgba(212, 175, 55, 0.2)',
+    paddingVertical: 8,
+    paddingBottom: 16,
   },
   navItem: {
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  navItemText: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: colors.textLight,
-    marginTop: 3,
+    position: 'relative',
+    paddingHorizontal: 16,
   },
   navItemTextActive: {
-    color: colors.primary,
-    fontWeight: '700',
+    fontSize: 11,
+    fontFamily: fonts.sansBold,
+    color: '#D4AF37', // Active Gold
+    marginTop: 3,
+  },
+  navItemTextInactive: {
+    fontSize: 11,
+    fontFamily: fonts.sansMedium,
+    color: '#94A3B8', // Inactive Silver/Gray
+    marginTop: 3,
+  },
+  activeGoldBar: {
+    position: 'absolute',
+    bottom: -6,
+    width: 28,
+    height: 3,
+    backgroundColor: '#D4AF37', // 3px Gold underline
+    borderRadius: 1.5,
   },
 });
