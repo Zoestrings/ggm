@@ -263,8 +263,8 @@ export default function HomeScreen({ navigation }) {
           {/* Top Bar: Clean White Rounded Square Logo Box & Notification Bell */}
           <View style={styles.headerTopBar}>
             <View style={styles.headerLeft}>
-              {/* Logo in Clean White Rounded Square Container (Picture 2 Style) */}
-              <View style={styles.headerLogoBox}>
+              {/* Logo in Perfect White Circle */}
+              <View style={styles.headerLogoCircle}>
                 <Image
                   source={require('../../assets/logo.png')}
                   style={styles.headerLogo}
@@ -328,7 +328,7 @@ export default function HomeScreen({ navigation }) {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* 4. The Giant Check-In Button Area (Camera Icon + Check In Pill Button) */}
+        {/* 4. The Giant Check-In Button (ONLY Button on Screen) */}
         <View style={styles.buttonSection}>
           {/* Giant Gold Ring with White Camera Icon */}
           <TouchableOpacity
@@ -346,50 +346,10 @@ export default function HomeScreen({ navigation }) {
             <Text style={styles.giantButtonText}>CHECK IN</Text>
           </TouchableOpacity>
 
-          {/* Dedicated Navy Pill-Shaped "Check In →" Button Directly Below Circle */}
-          <TouchableOpacity
-            style={styles.pillCheckInButton}
-            onPress={handleCheckInPress}
-            activeOpacity={0.85}
-          >
-            <Ionicons
-              name="camera"
-              size={18}
-              color="#D4AF37"
-              style={{ marginRight: 8 }}
-            />
-            <Text style={styles.pillCheckInText}>Check In</Text>
-            <Ionicons
-              name="arrow-forward"
-              size={18}
-              color="#D4AF37"
-              style={{ marginLeft: 8 }}
-            />
-          </TouchableOpacity>
-
           {/* Gray Action Instruction Text */}
           <Text style={styles.buttonInstructionText}>
             Tap to check in for today's service and record your attendance.
           </Text>
-
-          {/* Session Status Pill */}
-          <View style={styles.sessionStatusRow}>
-            {activeActivity ? (
-              <View style={styles.statusLivePill}>
-                <View style={styles.liveGreenDot} />
-                <Text style={styles.statusLiveText}>
-                  LIVE SESSION OPEN • Closes at {new Date(activeActivity.closes_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </Text>
-              </View>
-            ) : (
-              <View style={styles.statusClosedPill}>
-                <View style={styles.closedGrayDot} />
-                <Text style={styles.statusClosedText}>
-                  ATTENDANCE CLOSED • Next session on scheduled date
-                </Text>
-              </View>
-            )}
-          </View>
         </View>
 
         {/* 5. The Next Cleaning Date Card (Pure White with Crisp 2px Gold Border) */}
@@ -496,11 +456,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  // Clean White Rounded Square Container (Picture 2 Style)
-  headerLogoBox: {
+  // Clean White Perfect Circle Logo Container
+  headerLogoCircle: {
     width: 48,
     height: 48,
-    borderRadius: 12, // Rounded square container
+    borderRadius: 24, // Perfect circle (No square edges)
     backgroundColor: '#FFFFFF',
     padding: 4,
     justifyContent: 'center',
@@ -637,83 +597,13 @@ const styles = StyleSheet.create({
     fontFamily: fonts.sansBold,
     letterSpacing: 1.5,
   },
-  pillCheckInButton: {
-    marginTop: 14,
-    borderRadius: 24,
-    backgroundColor: '#173B70', // Solid Navy
-    borderWidth: 1.5,
-    borderColor: '#D4AF37', // Gold border
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 11,
-    paddingHorizontal: 26,
-    shadowColor: '#173B70',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  pillCheckInText: {
-    fontSize: 15,
-    fontFamily: fonts.sansBold,
-    color: '#FFFFFF',
-    letterSpacing: 0.5,
-  },
   buttonInstructionText: {
     fontSize: 13,
     fontFamily: fonts.sans,
     color: '#64748B', // Gray
     textAlign: 'center',
-    marginTop: 12,
-    maxWidth: 280,
-    lineHeight: 18,
-  },
-  sessionStatusRow: {
     marginTop: 14,
-  },
-  statusLivePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ECFDF5',
-    borderWidth: 1,
-    borderColor: '#A7F3D0',
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 20,
-  },
-  liveGreenDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#10B981',
-    marginRight: 7,
-  },
-  statusLiveText: {
-    fontSize: 12,
-    fontFamily: fonts.sansBold,
-    color: '#047857',
-  },
-  statusClosedPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F1F5F9',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 20,
-  },
-  closedGrayDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#94A3B8',
-    marginRight: 7,
-  },
-  statusClosedText: {
-    fontSize: 12,
-    fontFamily: fonts.sansMedium,
-    color: '#64748B',
+    maxWidth: 280,
   },
 
   // 3. Next Cleaning Date Card (Pure White with Crisp 2px Gold Border)
