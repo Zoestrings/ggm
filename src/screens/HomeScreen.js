@@ -96,11 +96,6 @@ export default function HomeScreen({ navigation, route }) {
               const finalProfile = { ...profile, role: effectiveRole };
               setUserProfile(finalProfile);
               await AsyncStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(finalProfile));
-
-              if (effectiveRole === 'super_admin' && !route?.params?.isMemberView) {
-                navigation.replace('SuperAdminDashboard');
-                return;
-              }
             } else {
               const meta = currentUser.user_metadata || {};
               const healedRole = meta.role || (isKnownSuperAdmin ? 'super_admin' : 'member');
@@ -116,11 +111,6 @@ export default function HomeScreen({ navigation, route }) {
               };
               setUserProfile(healedProfile);
               await AsyncStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(healedProfile));
-
-              if (healedRole === 'super_admin' && !route?.params?.isMemberView) {
-                navigation.replace('SuperAdminDashboard');
-                return;
-              }
 
               try {
                 await supabase.from('users').upsert(healedProfile, { onConflict: 'id' });
