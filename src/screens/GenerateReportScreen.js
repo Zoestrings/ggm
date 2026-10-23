@@ -133,7 +133,7 @@ export default function GenerateReportScreen({ route, navigation }) {
             <tr style="border-bottom: 1px solid #e2e8f0;">
               <td style="padding: 10px 12px; font-weight: 600; color: #475569;">${index + 1}</td>
               <td style="padding: 10px 12px; font-weight: 700; color: #0f172a;">${name}</td>
-              <td style="padding: 10px 12px; color: #173B70; font-weight: 600;">${instrument}</td>
+              <td style="padding: 10px 12px; color: #403F91; font-weight: 600;">${instrument}</td>
               <td style="padding: 10px 12px; color: #1e293b;">${time}</td>
               <td style="padding: 10px 12px;">
                 <span style="background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 700;">
@@ -166,7 +166,7 @@ export default function GenerateReportScreen({ route, navigation }) {
             .header {
               display: flex;
               align-items: center;
-              border-bottom: 2px solid #173B70;
+              border-bottom: 2px solid #403F91;
               padding-bottom: 16px;
               margin-bottom: 24px;
             }
@@ -180,7 +180,7 @@ export default function GenerateReportScreen({ route, navigation }) {
               font-size: 20px;
               font-weight: 800;
               margin: 0 0 4px 0;
-              color: #173B70;
+              color: #403F91;
               letter-spacing: -0.3px;
             }
             .header-text h2 {
@@ -224,7 +224,7 @@ export default function GenerateReportScreen({ route, navigation }) {
               font-size: 13px;
             }
             thead th {
-              background: #173B70;
+              background: #403F91;
               color: #ffffff;
               text-align: left;
               padding: 10px 12px;
@@ -246,7 +246,7 @@ export default function GenerateReportScreen({ route, navigation }) {
               align-self: center;
             }
             .summary-count {
-              background: #173B70;
+              background: #403F91;
               color: #ffffff;
               padding: 8px 16px;
               border-radius: 6px;

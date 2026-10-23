@@ -5,15 +5,16 @@ export const colors = {
   surfaceAlt: '#F1F4F9',       // Subtle section backing
   card: '#FFFFFF',
 
-  // Primary Royal Brand (Navy to Rich Royal Blue)
-  primary: '#173B70',          // Heritage GGM Navy
-  primaryRoyal: '#1E40AF',     // Vibrant church royal blue
-  primaryGradient: ['#173B70', '#2563EB'], // Gradient for buttons & headers
-  primaryLight: '#EEF4FF',
-  primaryBorder: '#DBEAFE',
+  // Primary Royal Brand (Official Royal Indigo Blue from GGM Logo)
+  primary: '#403F91',          // Official GGM Royal Indigo Blue
+  navy: '#403F91',             // Primary brand base
+  primaryRoyal: '#403F91',     // Logo Royal Indigo
+  primaryGradient: ['#403F91', '#2D2C6F'], // Rich gradient
+  primaryLight: '#F3F2FC',
+  primaryBorder: '#D8D5F5',
 
   // Subtle header gradient
-  headerGradient: ['#E9F0FD', '#FFFFFF'],
+  headerGradient: ['#ECEBFA', '#FFFFFF'],
 
   // Borders (ultra light & refined)
   border: '#E9EEF5',
@@ -27,8 +28,9 @@ export const colors = {
   textLight: '#94A3B8',
 
   // Accents & Badges
-  goldAccent: '#D97706',       // Church brass / gold accent
+  goldAccent: '#D4AF37',       // Gold accent
   goldLight: '#FEF3C7',
+  goldLine: '#D4AF37',
   success: '#10B981',
   successBg: '#ECFDF5',
   successBorder: '#A7F3D0',
@@ -63,25 +65,25 @@ export const fonts = {
 };
 
 export const shadows = {
-  // Floating Card Shadow with soft navy tint (no harsh black boxes)
+  // Floating Card Shadow with soft indigo tint
   card: {
-    shadowColor: '#173B70',
+    shadowColor: '#403F91',
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.06,
     shadowRadius: 16,
     elevation: 3,
   },
   // Button & Active Card Lift
   lifted: {
-    shadowColor: '#173B70',
+    shadowColor: '#403F91',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.16,
+    shadowOpacity: 0.18,
     shadowRadius: 18,
     elevation: 5,
   },
   // Subtle pill/chip shadow
   soft: {
-    shadowColor: '#173B70',
+    shadowColor: '#403F91',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 6,

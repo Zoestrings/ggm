@@ -18,6 +18,7 @@ import { supabase } from '../lib/supabase';
 import { registerForPushNotifications } from '../lib/notifications';
 import { syncPendingCheckins } from '../lib/offline';
 import { fonts, shadows } from '../theme';
+import GeometricHeader from '../components/GeometricHeader';
 
 const PROFILE_CACHE_KEY = '@ggm_user_profile';
 
@@ -79,7 +80,7 @@ export default function HomeScreen({ navigation, route }) {
                 setLoadingUser(false);
               }
             }
-          } catch (_cErr) {}
+          } catch (_cErr) { }
 
           // 3. Fetch fresh user profile from public.users table (source of truth)
           const { data: profile } = await supabase
@@ -199,12 +200,12 @@ export default function HomeScreen({ navigation, route }) {
             if (isMounted) {
               setUnreadNotifications(unreadCount || 0);
             }
-          } catch (_notifErr) {}
+          } catch (_notifErr) { }
 
           // 6. Try syncing any queued offline check-ins
           try {
             await syncPendingCheckins();
-          } catch (_syncErr) {}
+          } catch (_syncErr) { }
         } catch (err) {
           console.error('Error in HomeScreen loadData:', err);
           if (isMounted) {
@@ -236,7 +237,7 @@ export default function HomeScreen({ navigation, route }) {
   if (loadingUser && !user) {
     return (
       <View style={[styles.container, styles.centered]}>
-        <ActivityIndicator size="large" color="#173B70" />
+        <ActivityIndicator size="large" color="#403F91" />
       </View>
     );
   }
@@ -248,10 +249,15 @@ export default function HomeScreen({ navigation, route }) {
     userRole === 'super_admin' ||
     userRole === 'admin' ||
     user?.email?.toLowerCase() === 'akpodomagoodluck9@gmail.com';
+  const isSubAdmin = userRole === 'sub_admin';
 
   const navigateToAdmin = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    navigation.navigate('SuperAdminDashboard');
+    if (isSuperAdmin) {
+      navigation.navigate('SuperAdminDashboard');
+    } else if (isSubAdmin) {
+      navigation.navigate('SubAdminDashboard');
+    }
   };
 
   return (
@@ -276,13 +282,7 @@ export default function HomeScreen({ navigation, route }) {
       {/* 3. The Navy Header with Clean Rounded-Square Logo Container & Gold Curved Bottom */}
       <View style={styles.headerWrapper}>
         {/* Geometric Background Pattern */}
-        <Image
-          source={{
-            uri: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiPjxkZWZzPjxwYXR0ZXJuIGlkPSJwIiB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBvbHlnb24gcG9pbnRzPSIxMCwwIDQwLDAgMjAsMjAgLTEwLDIwIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDYpIi8+PHBvbHlnb24gcG9pbnRzPSI4MCwwIDExMCwwIDkwLDIwIDYwLDIwIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDYpIi8+PHBvbHlnb24gcG9pbnRzPSIxNTAsMCAxODAsMCAxNjAsMjAgMTMwLDIwIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDYpIi8+PHBvbHlnb24gcG9pbnRzPSIxMCwxMDAgNDAsMTAwIDIwLDEyMCAtMTAsMTIwIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDYpIi8+PHBvbHlnb24gcG9pbnRzPSI4MCwxMDAgMTEwLDEwMCA5MCwxMjAgNjAsMTIwIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDYpIi8+PHBvbHlnb24gcG9pbnRzPSIxNTAsMTAwIDE4MCwxMDAgMTYwLDEyMCAxMzAsMTIwIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDYpIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI3ApIi8+PC9zdmc+',
-          }}
-          style={styles.geometricPatternImage}
-          resizeMode="cover"
-        />
+        <GeometricHeader />
         <SafeAreaView edges={['top', 'left', 'right']} style={styles.headerSafeArea}>
           {/* Subtle Musical Texture inside Header */}
           <View style={styles.headerMusicalBackground} pointerEvents="none">
@@ -302,23 +302,12 @@ export default function HomeScreen({ navigation, route }) {
                 resizeMode="contain"
               />
               <View style={styles.headerBrandTexts}>
-                <Text style={styles.headerBrandTitle}>GGM Instrumentalists</Text>
-                <Text style={styles.headerBrandSubtitle}>God's Ministry Inc.</Text>
+                <Text style={styles.headerBrandTitle}>GGM INSTRUMENTALIST</Text>
+                <Text style={styles.headerBrandSubtitle}>GOD'S GRACE MINISTRY INC.</Text>
               </View>
             </View>
 
             <View style={styles.headerRight}>
-              {isSuperAdmin && (
-                <TouchableOpacity
-                  style={styles.headerAdminButton}
-                  onPress={navigateToAdmin}
-                  activeOpacity={0.8}
-                >
-                  <Ionicons name="shield-checkmark" size={15} color="#D4AF37" style={{ marginRight: 4 }} />
-                  <Text style={styles.headerAdminButtonText}>Admin</Text>
-                </TouchableOpacity>
-              )}
-
               <TouchableOpacity
                 style={styles.headerBellButton}
                 onPress={() => navigation.navigate('Notifications')}
@@ -338,7 +327,7 @@ export default function HomeScreen({ navigation, route }) {
             <Text style={styles.welcomeGreeting} numberOfLines={1}>
               Welcome, {name}
             </Text>
-            <Text style={styles.welcomeSubtitle}>Sanctuary Music Ministry</Text>
+            <Text style={styles.welcomeSubtitle}>GOD'S GRACE MINISTRY INC.</Text>
           </View>
         </SafeAreaView>
 
@@ -353,7 +342,7 @@ export default function HomeScreen({ navigation, route }) {
           {/* Navy Wave Body */}
           <Path
             d="M0,0 L375,0 L375,10 Q280,30 187.5,16 Q95,2 0,22 Z"
-            fill="#173B70"
+            fill="#403F91"
           />
           {/* Thick Gold Wave Border Along the Bottom */}
           <Path
@@ -369,29 +358,27 @@ export default function HomeScreen({ navigation, route }) {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* 4. The Giant Check-In Button (ONLY Button on Screen) */}
+        {/* 4. Giant Check-In Button */}
         <View style={styles.buttonSection}>
-          {/* Giant Gold Ring with White Camera Icon */}
           <TouchableOpacity
             style={styles.giantButton}
             onPress={handleCheckInPress}
             activeOpacity={0.88}
           >
-            {/* Soft Top Gloss Highlight */}
-            <View style={styles.buttonGloss} />
-
-            {/* Large White Camera Icon */}
-            <Ionicons name="camera" size={54} color="#FFFFFF" style={{ marginBottom: 4 }} />
-
-            {/* Bold White Action Text */}
-            <Text style={styles.giantButtonText}>CHECK IN</Text>
+            {/* Church Logo completely filling the circle edge-to-edge */}
+            <Image
+              source={require('../../assets/logo.png')}
+              style={styles.giantButtonLogo}
+              resizeMode="cover"
+            />
           </TouchableOpacity>
 
-          {/* Gray Action Instruction Text */}
+          {/* Eye-Catching Bold Action Text */}
           <Text style={styles.buttonInstructionText}>
-            Tap to check in for today's service and record your attendance.
+            Tap to Register your Attendance
           </Text>
         </View>
+
 
         {/* 5. The Next Cleaning Date Card (Pure White with Crisp 2px Gold Border) */}
         <View style={styles.dateCard}>
@@ -457,14 +444,14 @@ const styles = StyleSheet.create({
   bgMusicNote: {
     position: 'absolute',
     fontSize: 26,
-    color: '#173B70',
+    color: '#403F91',
     opacity: 0.045,
     fontWeight: '700',
   },
 
   // 1. Header Styles
   headerWrapper: {
-    backgroundColor: '#173B70', // Dark Navy
+    backgroundColor: '#403F91', // Dark Navy
     position: 'relative',
     overflow: 'hidden',
     ...shadows.lifted,
@@ -534,6 +521,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  headerAdminButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(212, 175, 55, 0.15)',
+    borderWidth: 1,
+    borderColor: '#D4AF37',
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+    borderRadius: 16,
+    marginRight: 8,
+  },
+  headerAdminButtonText: {
+    fontSize: 12,
+    fontFamily: fonts.sansBold,
+    color: '#FFFFFF',
+  },
   headerBellButton: {
     width: 40,
     height: 40,
@@ -554,7 +557,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: '#EF4444',
     borderWidth: 1.5,
-    borderColor: '#173B70',
+    borderColor: '#403F91',
   },
   welcomeContainer: {
     alignItems: 'center',
@@ -595,52 +598,43 @@ const styles = StyleSheet.create({
     paddingBottom: 90, // Generous clearance for docked bottom tab bar
   },
 
-  // 2. Giant Button & Pill Button
   buttonSection: {
     alignItems: 'center',
-    marginVertical: 14,
+    marginVertical: 16,
   },
   giantButton: {
-    width: 164,
-    height: 164,
-    borderRadius: 82,
-    backgroundColor: '#173B70', // Solid Navy
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: '#403F91', // Royal Indigo circle
     borderWidth: 4,
-    borderColor: '#D4AF37', // 4px Gold Border
+    borderColor: '#D4AF37',     // Crisp 4px Gold Border
     justifyContent: 'center',
     alignItems: 'center',
-    position: 'relative',
     overflow: 'hidden',
-    // Mature, Soft Navy Shadow
-    shadowColor: '#173B70',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
+
+    // Tactile 3D Circular Shadow
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
     elevation: 8,
   },
-  buttonGloss: {
-    position: 'absolute',
-    top: 0,
-    left: 12,
-    right: 12,
-    height: 55,
-    borderTopLeftRadius: 80,
-    borderTopRightRadius: 80,
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
-  },
-  giantButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontFamily: fonts.sansBold,
-    letterSpacing: 1.5,
+  giantButtonLogo: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 80,
+    backgroundColor: 'transparent',
   },
   buttonInstructionText: {
-    fontSize: 13,
-    fontFamily: fonts.sans,
-    color: '#64748B', // Gray
+    fontSize: 16,
+    fontFamily: fonts.sansSemiBold, // Inter_600SemiBold
+    fontWeight: '600',
+    color: '#173A70',               // Deep Navy
     textAlign: 'center',
-    marginTop: 14,
-    maxWidth: 280,
+    marginTop: 18,
+    marginBottom: 6,
+    letterSpacing: 0.2,
   },
 
   // 3. Next Cleaning Date Card (Pure White with Crisp 2px Gold Border)
@@ -679,7 +673,7 @@ const styles = StyleSheet.create({
   dateCardValue: {
     fontSize: 22,
     fontFamily: fonts.serif,
-    color: '#173B70',
+    color: '#403F91',
     marginTop: 2,
   },
   dateCardSub: {
@@ -711,7 +705,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: fonts.serifSemiBold,
     fontStyle: 'italic',
-    color: '#173B70',
+    color: '#403F91',
     marginHorizontal: 12,
     textAlign: 'center',
   },
@@ -743,7 +737,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   adminPortalCard: {
-    backgroundColor: '#173B70', // Rich Solid Navy
+    backgroundColor: '#403F91', // Rich Solid Navy
     borderRadius: 16,
     borderWidth: 1.5,
     borderColor: '#D4AF37', // Gold Accent Border
@@ -753,7 +747,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginTop: 18,
     marginBottom: 8,
-    shadowColor: '#173B70',
+    shadowColor: '#403F91',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.18,
     shadowRadius: 10,

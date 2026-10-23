@@ -10,11 +10,14 @@ import {
   Image,
   RefreshControl,
   StatusBar,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { colors, fonts, shadows, spacing } from '../theme';
+import GeometricHeader from '../components/GeometricHeader';
 
 export default function SubAdminAttendanceScreen({ navigation, route }) {
   const [currentUser, setCurrentUser] = useState(null);
@@ -278,32 +281,44 @@ export default function SubAdminAttendanceScreen({ navigation, route }) {
     );
   };
 
+  const handleLogout = () => {
+    Alert.alert('Log Out', 'Are you sure you want to log out of your account?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Log Out',
+        style: 'destructive',
+        onPress: async () => {
+          await AsyncStorage.clear();
+          await supabase.auth.signOut();
+          navigation.replace('Login');
+        },
+      },
+    ]);
+  };
+
   const activityName = targetActivity?.name || 'Cleaning & Service';
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#173B70" />
+      <StatusBar barStyle="light-content" backgroundColor="#403F91" />
 
-      {/* 1. The Navy Hero Header */}
+      {/* 1. The Royal Indigo Hero Header */}
       <View style={styles.heroHeader}>
-        {/* Geometric Background Pattern */}
-        <Image
-          source={{
-            uri: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiPjxkZWZzPjxwYXR0ZXJuIGlkPSJwIiB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBvbHlnb24gcG9pbnRzPSIxMCwwIDQwLDAgMjAsMjAgLTEwLDIwIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDYpIi8+PHBvbHlnb24gcG9pbnRzPSI4MCwwIDExMCwwIDkwLDIwIDYwLDIwIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDYpIi8+PHBvbHlnb24gcG9pbnRzPSIxNTAsMCAxODAsMCAxNjAsMjAgMTMwLDIwIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDYpIi8+PHBvbHlnb24gcG9pbnRzPSIxMCwxMDAgNDAsMTAwIDIwLDEyMCAtMTAsMTIwIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDYpIi8+PHBvbHlnb24gcG9pbnRzPSI4MCwxMDAgMTEwLDEwMCA5MCwxMjAgNjAsMTIwIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDYpIi8+PHBvbHlnb24gcG9pbnRzPSIxNTAsMTAwIDE4MCwxMDAgMTYwLDEyMCAxMzAsMTIwIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDYpIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI3ApIi8+PC9zdmc+',
-          }}
-          style={styles.geometricPatternImage}
-          resizeMode="cover"
-        />
+        <GeometricHeader />
         <SafeAreaView edges={['top', 'left', 'right']} style={styles.heroSafeArea}>
-          {/* Top Bar: Back Button, Title, Live Indicator */}
+          {/* Top Bar: Back/Logout Button, Title, Live Indicator */}
           <View style={styles.topBar}>
             <TouchableOpacity
               style={styles.backButton}
-              onPress={() => navigation.goBack()}
+              onPress={() => (navigation.canGoBack() ? navigation.goBack() : handleLogout())}
               activeOpacity={0.7}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
+              <Ionicons
+                name={navigation.canGoBack() ? 'arrow-back' : 'log-out-outline'}
+                size={22}
+                color="#FFFFFF"
+              />
             </TouchableOpacity>
 
             <View style={styles.titleWrap}>
@@ -355,7 +370,7 @@ export default function SubAdminAttendanceScreen({ navigation, route }) {
       {/* 3. The Attendance List (Strict Read-Only) */}
       {loading && !refreshing ? (
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#173B70" />
+          <ActivityIndicator size="large" color="#403F91" />
           <Text style={styles.loadingText}>Syncing live attendance...</Text>
         </View>
       ) : (
@@ -370,8 +385,8 @@ export default function SubAdminAttendanceScreen({ navigation, route }) {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              colors={['#173B70']}
-              tintColor="#173B70"
+              colors={['#403F91']}
+              tintColor="#403F91"
             />
           }
           ListEmptyComponent={
@@ -401,7 +416,7 @@ const styles = StyleSheet.create({
 
   // 1. Navy Hero Header
   heroHeader: {
-    backgroundColor: '#173B70',
+    backgroundColor: '#403F91',
     paddingBottom: 36, // Space for the floating search bar overlap
     position: 'relative',
     overflow: 'hidden',
@@ -518,7 +533,7 @@ const styles = StyleSheet.create({
     height: '100%',
     fontSize: 14,
     fontFamily: fonts.sans,
-    color: '#173B70',
+    color: '#403F91',
   },
 
   // 3. Attendance List
@@ -563,7 +578,7 @@ const styles = StyleSheet.create({
   initialsText: {
     fontSize: 16,
     fontFamily: fonts.sansBold,
-    color: '#173B70',
+    color: '#403F91',
   },
   infoCol: {
     flex: 1,
@@ -573,7 +588,7 @@ const styles = StyleSheet.create({
   memberName: {
     fontSize: 15,
     fontFamily: fonts.sansBold,
-    color: '#173B70',
+    color: '#403F91',
     letterSpacing: -0.2,
   },
   memberInstrument: {
@@ -589,7 +604,7 @@ const styles = StyleSheet.create({
   timeText: {
     fontSize: 13,
     fontFamily: fonts.sansBold,
-    color: '#173B70',
+    color: '#403F91',
     letterSpacing: -0.2,
   },
   presentBadge: {
@@ -628,7 +643,7 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 17,
     fontFamily: fonts.sansBold,
-    color: '#173B70',
+    color: '#403F91',
     marginTop: 14,
     marginBottom: 6,
   },

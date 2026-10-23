@@ -9,7 +9,7 @@ const corsHeaders = {
 };
 
 // Colors in 0-1 RGB
-const COLOR_PRIMARY = rgb(0.09, 0.23, 0.44);     // #173B70 (Navy)
+const COLOR_PRIMARY = rgb(0.09, 0.23, 0.44);     // #403F91 (Navy)
 const COLOR_NAVY_DARK = rgb(0.05, 0.15, 0.28);   // #0E2547
 const COLOR_TEXT_DARK = rgb(0.06, 0.09, 0.16);   // #0F172A
 const COLOR_TEXT_MUTED = rgb(0.39, 0.45, 0.55);  // #64748B

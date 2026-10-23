@@ -357,7 +357,7 @@ export default function ProfileScreen({ navigation }) {
   if (loading && !userProfile) {
     return (
       <View style={[styles.container, styles.centered]}>
-        <ActivityIndicator size="large" color="#173B70" />
+        <ActivityIndicator size="large" color="#403F91" />
       </View>
     );
   }
@@ -460,7 +460,7 @@ export default function ProfileScreen({ navigation }) {
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Section / Instrument</Text>
             <View style={styles.instrumentBadge}>
-              <Ionicons name="musical-notes" size={13} color="#173B70" style={{ marginRight: 4 }} />
+              <Ionicons name="musical-notes" size={13} color="#403F91" style={{ marginRight: 4 }} />
               <Text style={styles.instrumentBadgeText}>{instrument}</Text>
             </View>
           </View>
@@ -477,7 +477,7 @@ export default function ProfileScreen({ navigation }) {
           >
             <View style={styles.actionLeft}>
               <View style={styles.actionIconWrapper}>
-                <Ionicons name="lock-closed-outline" size={18} color="#173B70" />
+                <Ionicons name="lock-closed-outline" size={18} color="#403F91" />
               </View>
               <Text style={styles.actionTitle}>Change Password</Text>
             </View>
@@ -493,7 +493,7 @@ export default function ProfileScreen({ navigation }) {
           >
             <View style={styles.actionLeft}>
               <View style={styles.actionIconWrapper}>
-                <Ionicons name="call-outline" size={18} color="#173B70" />
+                <Ionicons name="call-outline" size={18} color="#403F91" />
               </View>
               <Text style={styles.actionTitle}>Update Phone Number</Text>
             </View>
@@ -509,7 +509,7 @@ export default function ProfileScreen({ navigation }) {
           >
             <View style={styles.actionLeft}>
               <View style={styles.actionIconWrapper}>
-                <Ionicons name="mail-outline" size={18} color="#173B70" />
+                <Ionicons name="mail-outline" size={18} color="#403F91" />
               </View>
               <Text style={styles.actionTitle}>Update Email Address</Text>
             </View>
@@ -524,7 +524,7 @@ export default function ProfileScreen({ navigation }) {
           <View style={styles.preferenceRow}>
             <View style={styles.actionLeft}>
               <View style={styles.actionIconWrapper}>
-                <Ionicons name="notifications-outline" size={18} color="#173B70" />
+                <Ionicons name="notifications-outline" size={18} color="#403F91" />
               </View>
               <View>
                 <Text style={styles.actionTitle}>Activity Reminders</Text>
@@ -535,7 +535,7 @@ export default function ProfileScreen({ navigation }) {
             <Switch
               value={activityReminders}
               onValueChange={handleToggleReminders}
-              trackColor={{ false: '#E2E8F0', true: '#173B70' }}
+              trackColor={{ false: '#E2E8F0', true: '#403F91' }}
               thumbColor={activityReminders ? '#D4AF37' : '#94A3B8'}
             />
           </View>
@@ -739,7 +739,7 @@ const styles = StyleSheet.create({
     borderRadius: 50,
     position: 'relative',
     marginBottom: 14,
-    shadowColor: '#173B70',
+    shadowColor: '#403F91',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.14,
     shadowRadius: 8,
@@ -754,7 +754,7 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: '#173B70',
+    backgroundColor: '#403F91',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
@@ -772,7 +772,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#173B70',
+    backgroundColor: '#403F91',
     borderWidth: 2,
     borderColor: '#FFFFFF',
     justifyContent: 'center',
@@ -782,12 +782,12 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 24,
     fontFamily: fonts.serif,
-    color: '#173B70',
+    color: '#403F91',
     textAlign: 'center',
     letterSpacing: -0.2,
   },
   roleBadge: {
-    backgroundColor: '#173B70', // Navy Pill
+    backgroundColor: '#403F91', // Navy Pill
     paddingHorizontal: 14,
     paddingVertical: 4,
     borderRadius: 12,
@@ -800,7 +800,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
   },
   changePhotoLink: {
-    color: '#173B70',
+    color: '#403F91',
     fontSize: 13,
     fontFamily: fonts.sansSemiBold,
     marginTop: 10,
@@ -815,7 +815,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     borderWidth: 1,
     borderColor: '#F1F5F9',
-    shadowColor: '#173B70',
+    shadowColor: '#403F91',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
@@ -857,7 +857,7 @@ const styles = StyleSheet.create({
   instrumentBadgeText: {
     fontSize: 13,
     fontFamily: fonts.sansSemiBold,
-    color: '#173B70',
+    color: '#403F91',
   },
   divider: {
     height: 1,
@@ -986,7 +986,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.sansSemiBold,
   },
   modalSaveBtn: {
-    backgroundColor: '#173B70',
+    backgroundColor: '#403F91',
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 10,

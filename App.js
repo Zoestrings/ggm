@@ -43,6 +43,7 @@ import PendingReviewScreen from './src/screens/PendingReviewScreen';
 
 // Upgrade Screens (Sub-Admin & Super-Admin)
 import SubAdminAttendanceScreen from './src/screens/SubAdminAttendanceScreen';
+import SubAdminDashboardScreen from './src/screens/SubAdminDashboardScreen';
 import SuperAdminDashboardScreen from './src/screens/SuperAdminDashboardScreen';
 import TopPerformersScreen from './src/screens/TopPerformersScreen';
 import ManageRolesScreen from './src/screens/ManageRolesScreen';
@@ -53,47 +54,42 @@ import UpdateModal from './src/components/UpdateModal';
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
-function MainTabs() {
+const getTabScreenOptions = () => ({
+  headerShown: false,
+  tabBarActiveTintColor: '#D4AF37', // Active Gold
+  tabBarInactiveTintColor: '#94A3B8', // Inactive Silver/Gray
+  tabBarBackground: () => (
+    <View style={{ flex: 1, backgroundColor: '#403F91' }} />
+  ),
+  tabBarStyle: {
+    backgroundColor: '#403F91', // Official Royal Indigo Blue (#403F91)
+    borderTopWidth: 1.5,
+    borderTopColor: '#D4AF37', // Crisp Gold Top Border
+    height: Platform.OS === 'ios' ? 88 : 68,
+    paddingTop: 8,
+    paddingBottom: Platform.OS === 'ios' ? 24 : 8,
+    elevation: 10,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+  },
+  tabBarIconStyle: {
+    width: 24,
+    height: 24,
+  },
+  tabBarLabelStyle: {
+    fontSize: 11,
+    fontFamily: 'Inter_600SemiBold',
+    marginTop: 3,
+    marginBottom: 1,
+  },
+});
+
+// ── 1. Regular Member Tab Navigator (Strictly 3 Tabs) ──
+function MemberTabs() {
   return (
-    <Tab.Navigator
-      screenOptions={{
-        headerShown: false,
-        tabBarBackground: () => (
-          <View style={{ flex: 1, backgroundColor: '#173B70' }} />
-        ),
-        tabBarStyle: {
-          backgroundColor: '#173B70', // Solid Navy (#173B70)
-          borderTopWidth: 1.5,
-          borderTopColor: '#D4AF37', // Crisp Gold Top Border
-          height: Platform.OS === 'ios' ? 88 : 68,
-          paddingTop: 8,
-          paddingBottom: Platform.OS === 'ios' ? 24 : 8,
-          elevation: 10,
-          shadowColor: '#000000',
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.12,
-          shadowRadius: 4,
-        },
-        tabBarItemStyle: {
-          justifyContent: 'center',
-          alignItems: 'center',
-          flexDirection: 'column',
-          paddingVertical: 2,
-        },
-        tabBarIconStyle: {
-          marginTop: 2,
-          marginBottom: 2,
-        },
-        tabBarActiveTintColor: '#D4AF37', // Active Gold
-        tabBarInactiveTintColor: '#94A3B8', // Inactive Silver/Gray
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontFamily: 'Inter_600SemiBold',
-          marginTop: 1,
-          marginBottom: 2,
-        },
-      }}
-    >
+    <Tab.Navigator screenOptions={getTabScreenOptions()}>
       <Tab.Screen
         name="HomeScreen"
         component={HomeScreen}
@@ -121,6 +117,102 @@ function MainTabs() {
           tabBarLabel: 'Profile',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? 'person' : 'person-outline'} size={24} color={color} />
+          ),
+        }}
+      />
+    </Tab.Navigator>
+  );
+}
+
+// ── 2. Super Admin Tab Navigator (4 Tabs: Home, History, Profile, Admin) ──
+function SuperAdminTabs() {
+  return (
+    <Tab.Navigator screenOptions={getTabScreenOptions()} initialRouteName="SuperAdminHomeTab">
+      <Tab.Screen
+        name="SuperAdminHomeTab"
+        component={HomeScreen}
+        options={{
+          tabBarLabel: 'Home',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'home' : 'home-outline'} size={24} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="SuperAdminHistoryTab"
+        component={MemberHistoryScreen}
+        options={{
+          tabBarLabel: 'History',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'time' : 'time-outline'} size={24} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="SuperAdminProfileTab"
+        component={ProfileScreen}
+        options={{
+          tabBarLabel: 'Profile',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'person' : 'person-outline'} size={24} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="SuperAdminDashboardTab"
+        component={SuperAdminDashboardScreen}
+        options={{
+          tabBarLabel: 'Admin',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'shield-checkmark' : 'shield-checkmark-outline'} size={23} color={color} />
+          ),
+        }}
+      />
+    </Tab.Navigator>
+  );
+}
+
+// ── 3. Sub-Admin Tab Navigator (4 Tabs: Home, History, Profile, Admin) ──
+function SubAdminTabs() {
+  return (
+    <Tab.Navigator screenOptions={getTabScreenOptions()} initialRouteName="SubAdminHomeTab">
+      <Tab.Screen
+        name="SubAdminHomeTab"
+        component={HomeScreen}
+        options={{
+          tabBarLabel: 'Home',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'home' : 'home-outline'} size={24} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="SubAdminHistoryTab"
+        component={MemberHistoryScreen}
+        options={{
+          tabBarLabel: 'History',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'time' : 'time-outline'} size={24} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="SubAdminProfileTab"
+        component={ProfileScreen}
+        options={{
+          tabBarLabel: 'Profile',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'person' : 'person-outline'} size={24} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="SubAdminDashboardTab"
+        component={SubAdminDashboardScreen}
+        options={{
+          tabBarLabel: 'Admin',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'shield-checkmark' : 'shield-checkmark-outline'} size={23} color={color} />
           ),
         }}
       />
@@ -158,7 +250,7 @@ export default function App() {
         if (profile?.role) {
           return profile.role;
         }
-      } catch (_e) {}
+      } catch (_e) { }
       return user.user_metadata?.role || 'member';
     };
 
@@ -193,13 +285,24 @@ export default function App() {
           source={require('./assets/logo.png')}
           style={{ width: 90, height: 90, resizeMode: 'contain', marginBottom: 20 }}
         />
-        <ActivityIndicator size="large" color="#173B70" />
+        <ActivityIndicator size="large" color="#403F91" />
       </View>
     );
   }
 
   const isSuperAdmin = userRole === 'super_admin';
-  const initialRoute = !session ? 'Login' : (isSuperAdmin ? 'SuperAdminDashboard' : 'Home');
+  const isSubAdmin = userRole === 'sub_admin';
+
+  let initialRoute = 'Login';
+  if (session) {
+    if (isSuperAdmin) {
+      initialRoute = 'SuperAdminDashboard';
+    } else if (isSubAdmin) {
+      initialRoute = 'SubAdminDashboard';
+    } else {
+      initialRoute = 'Home';
+    }
+  }
 
   return (
     <View style={styles.appContainer}>
@@ -213,22 +316,27 @@ export default function App() {
             cardStyle: { backgroundColor: '#FFFFFF' },
           }}
         >
-          {/* Auth & Member Screens */}
+          {/* Auth & Tab Root Screens */}
           <Stack.Screen name="Login" component={LoginScreen} />
           <Stack.Screen name="Register" component={RegisterScreen} />
-          <Stack.Screen name="Home" component={MainTabs} />
+          <Stack.Screen
+            name="Home"
+            component={isSuperAdmin ? SuperAdminTabs : isSubAdmin ? SubAdminTabs : MemberTabs}
+          />
+          <Stack.Screen name="SuperAdminDashboard" component={SuperAdminTabs} />
+          <Stack.Screen name="SubAdminDashboard" component={SubAdminTabs} />
+          <Stack.Screen name="MemberHome" component={MemberTabs} />
+
+          {/* Core Action & Detail Screens */}
           <Stack.Screen name="CheckIn" component={CheckInScreen} />
           <Stack.Screen name="CompleteProfile" component={CompleteProfileScreen} />
           <Stack.Screen name="MemberHistory" component={MemberHistoryScreen} />
           <Stack.Screen name="Profile" component={ProfileScreen} />
           <Stack.Screen name="AccountSettings" component={AccountSettingsScreen} />
           <Stack.Screen name="Notifications" component={NotificationsScreen} />
-
-          {/* Sub-Admin Screens */}
           <Stack.Screen name="SubAdminAttendance" component={SubAdminAttendanceScreen} />
 
-          {/* Super-Admin Screens */}
-          <Stack.Screen name="SuperAdminDashboard" component={SuperAdminDashboardScreen} />
+          {/* Admin Specialty Screens */}
           <Stack.Screen name="TopPerformers" component={TopPerformersScreen} />
           <Stack.Screen name="ManageRoles" component={ManageRolesScreen} />
           <Stack.Screen name="AuditLog" component={AuditLogScreen} />

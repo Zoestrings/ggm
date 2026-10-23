@@ -93,7 +93,7 @@ export default function SuperAdminDashboardScreen({ navigation }) {
               } else if (isMounted) {
                 setLatestReport(null);
               }
-            } catch (_rErr) {}
+            } catch (_rErr) { }
 
             // Pending offline reviews
             const { count: pendCount } = await supabase
@@ -180,9 +180,15 @@ export default function SuperAdminDashboardScreen({ navigation }) {
   const handleDownloadPDF = async () => {
     if (!latestReport?.storage_path) {
       Alert.alert(
-        'PDF Report Generated',
-        'Generating and compiling official monthly attendance PDF report with member photo verifications...',
-        [{ text: 'OK' }]
+        'Generate Report',
+        'No finalized PDF report is stored yet. Would you like to generate a new attendance report now?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Generate Report',
+            onPress: () => navigation.navigate('GenerateReport', { activity: activeActivity }),
+          },
+        ]
       );
       return;
     }
@@ -238,7 +244,7 @@ export default function SuperAdminDashboardScreen({ navigation }) {
   if (loading && !userProfile) {
     return (
       <View style={[styles.container, styles.centered]}>
-        <ActivityIndicator size="large" color="#173B70" />
+        <ActivityIndicator size="large" color="#403F91" />
       </View>
     );
   }
@@ -249,7 +255,7 @@ export default function SuperAdminDashboardScreen({ navigation }) {
       id: 'register',
       label: 'Register',
       icon: 'camera',
-      onPress: () => navigation.navigate('Register'),
+      onPress: () => navigation.navigate('CheckIn'),
     },
     {
       id: 'attendance',
@@ -303,7 +309,7 @@ export default function SuperAdminDashboardScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      {/* ── 1. The Dark Navy Hero Header (Top 40% of Screen, Solid Navy #173B70) ── */}
+      {/* ── 1. The Dark Navy Hero Header (Top 40% of Screen, Solid Navy #403F91) ── */}
       <View style={styles.heroHeader}>
         {/* Geometric Background Pattern */}
         <Image
@@ -315,24 +321,14 @@ export default function SuperAdminDashboardScreen({ navigation }) {
         />
 
         <SafeAreaView edges={['top', 'left', 'right']} style={styles.heroSafeArea}>
-          {/* Top Bar: Hamburger menu (left), "Dashboard" (centered Playfair Display 24px), Notification Bell with Red Badge (right) */}
+          {/* Top Bar: Clean right-aligned Notification Bell with Badge */}
           <View style={styles.topBar}>
-            <TouchableOpacity
-              style={styles.iconButton}
-              onPress={() => navigation.navigate('Home')}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="menu" size={26} color="#FFFFFF" />
-            </TouchableOpacity>
-
-            <Text style={styles.topBarTitle}>Dashboard</Text>
-
             <TouchableOpacity
               style={styles.bellButtonWrapper}
               onPress={() => navigation.navigate('Notifications')}
               activeOpacity={0.7}
             >
-              <Ionicons name="notifications" size={24} color="#FFFFFF" />
+              <Ionicons name="notifications" size={22} color="#FFFFFF" />
               <View style={styles.notificationBadge}>
                 <Text style={styles.notificationBadgeText}>25</Text>
               </View>
@@ -349,8 +345,8 @@ export default function SuperAdminDashboardScreen({ navigation }) {
             />
 
             <View style={styles.profileDetailsCol}>
-              <Text style={styles.brandTitle}>GGM Instrumentalists</Text>
-              <Text style={styles.brandSubtitle}>Gods Ministry Inc.</Text>
+              <Text style={styles.brandTitle}>GGM INSTRUMENTALIST</Text>
+              <Text style={styles.brandSubtitle}>GOD'S GRACE MINISTRY INC.</Text>
               <View style={styles.welcomeAdminRow}>
                 <Text style={styles.welcomeAdminText} numberOfLines={1}>
                   Welcome, {adminName}
@@ -358,15 +354,6 @@ export default function SuperAdminDashboardScreen({ navigation }) {
                 <Ionicons name="checkmark-circle" size={17} color="#38BDF8" style={{ marginLeft: 6 }} />
               </View>
             </View>
-
-            {/* Switch to Member View */}
-            <TouchableOpacity
-              style={styles.memberViewButton}
-              onPress={() => navigation.navigate('Home', { isMemberView: true, screen: 'HomeScreen', params: { isMemberView: true } })}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.memberViewButtonText}>Member View</Text>
-            </TouchableOpacity>
           </View>
 
           {/* Translucent Info Card (borderRadius: 16, rgba(255, 255, 255, 0.15)) */}
@@ -394,8 +381,8 @@ export default function SuperAdminDashboardScreen({ navigation }) {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={['#173B70']}
-            tintColor="#173B70"
+            colors={['#403F91']}
+            tintColor="#403F91"
           />
         }
       >
@@ -489,7 +476,7 @@ export default function SuperAdminDashboardScreen({ navigation }) {
 
                       {/* Time Badge */}
                       <View style={styles.recentTimeBadge}>
-                        <Ionicons name="time-outline" size={12} color="#173B70" style={{ marginRight: 4 }} />
+                        <Ionicons name="time-outline" size={12} color="#403F91" style={{ marginRight: 4 }} />
                         <Text style={styles.recentTimeText}>{timeString}</Text>
                       </View>
                     </View>
@@ -501,37 +488,6 @@ export default function SuperAdminDashboardScreen({ navigation }) {
           )}
         </View>
       </ScrollView>
-
-      {/* ── 4. The Solid Navy Bottom Tab Bar (3 Tabs: Home, History, Profile) ── */}
-      <View style={styles.bottomTabBar}>
-        <TouchableOpacity
-          style={styles.bottomTabButton}
-          onPress={() => navigation.navigate('Home')}
-          activeOpacity={0.8}
-        >
-          <View style={styles.activeTabTopLine} />
-          <Ionicons name="home" size={24} color="#D4AF37" />
-          <Text style={[styles.bottomTabLabel, styles.bottomTabLabelActive]}>Home</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.bottomTabButton}
-          onPress={() => navigation.navigate('MemberHistory')}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="time-outline" size={24} color="#94A3B8" />
-          <Text style={styles.bottomTabLabel}>History</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.bottomTabButton}
-          onPress={() => navigation.navigate('AccountSettings')}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="person-outline" size={24} color="#94A3B8" />
-          <Text style={styles.bottomTabLabel}>Profile</Text>
-        </TouchableOpacity>
-      </View>
     </View>
   );
 }
@@ -546,9 +502,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  // 1. Hero Header Styles (Top 40% Solid Navy #173B70, Straight Clean Edges)
+  // 1. Hero Header Styles (Top 40% Solid Navy #403F91, Straight Clean Edges)
   heroHeader: {
-    backgroundColor: '#173B70', // Solid Navy (#173B70)
+    backgroundColor: '#403F91', // Solid Navy (#403F91)
     paddingBottom: 22,
     position: 'relative',
     overflow: 'hidden',
@@ -572,9 +528,9 @@ const styles = StyleSheet.create({
   // Top App Bar
   topBar: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     alignItems: 'center',
-    marginBottom: 18,
+    marginBottom: 14,
   },
   iconButton: {
     width: 40,
@@ -588,11 +544,31 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     letterSpacing: 0.2,
   },
+  topBarRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  memberViewButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.16)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.28)',
+    marginRight: 10,
+  },
+  memberViewButtonText: {
+    fontSize: 12,
+    fontFamily: fonts.sansBold,
+    color: '#FFFFFF',
+  },
   bellButtonWrapper: {
-    width: 40,
-    height: 40,
+    width: 36,
+    height: 36,
     justifyContent: 'center',
-    alignItems: 'flex-end',
+    alignItems: 'center',
     position: 'relative',
   },
   notificationBadge: {
@@ -607,7 +583,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: '#173B70',
+    borderColor: '#403F91',
   },
   notificationBadgeText: {
     color: '#FFFFFF',
@@ -706,7 +682,7 @@ const styles = StyleSheet.create({
   bodyContent: {
     paddingHorizontal: 20,
     paddingTop: 24,
-    paddingBottom: 110, // Generous breathing room above bottom tab bar
+    paddingBottom: 36, // Clean spacing above single navigation tab bar
   },
   gridSectionHeading: {
     fontSize: 12,
@@ -730,12 +706,12 @@ const styles = StyleSheet.create({
     width: 75,
     height: 75,
     borderRadius: 37.5,
-    backgroundColor: '#173B70', // Solid Navy Blue (#173B70)
+    backgroundColor: '#403F91', // Solid Navy Blue (#403F91)
     borderWidth: 1.5,
     borderColor: '#D4AF37', // Gold Accent Border
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#173B70',
+    shadowColor: '#403F91',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.18,
     shadowRadius: 10,
@@ -795,7 +771,7 @@ const styles = StyleSheet.create({
   seeAllText: {
     fontSize: 12,
     fontFamily: fonts.sansSemiBold,
-    color: '#173B70',
+    color: '#403F91',
   },
   recentListCard: {
     backgroundColor: '#FFFFFF',
@@ -815,7 +791,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#173B70',
+    backgroundColor: '#403F91',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -856,7 +832,7 @@ const styles = StyleSheet.create({
   recentTimeText: {
     fontSize: 11,
     fontFamily: fonts.sansSemiBold,
-    color: '#173B70',
+    color: '#403F91',
   },
   recentItemDivider: {
     height: 1,
@@ -883,51 +859,5 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     marginTop: 2,
     textAlign: 'center',
-  },
-
-  // 4. Solid Navy Bottom Tab Bar
-  bottomTabBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: Platform.OS === 'ios' ? 88 : 68,
-    backgroundColor: '#173B70', // Solid Navy (#173B70)
-    borderTopWidth: 1.5,
-    borderTopColor: '#D4AF37', // Crisp Gold Top Border Accent
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    paddingBottom: Platform.OS === 'ios' ? 24 : 8,
-    paddingTop: 8,
-    elevation: 10,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 4,
-    zIndex: 20,
-  },
-  bottomTabButton: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  activeTabTopLine: {
-    position: 'absolute',
-    top: -8,
-    width: 32,
-    height: 3,
-    backgroundColor: '#D4AF37', // 3px Gold active line
-    borderRadius: 2,
-  },
-  bottomTabLabel: {
-    fontSize: 11,
-    fontFamily: fonts.sansSemiBold,
-    color: '#94A3B8', // Inactive Silver/Gray
-    marginTop: 3,
-  },
-  bottomTabLabelActive: {
-    color: '#D4AF37', // Active Gold
   },
 });

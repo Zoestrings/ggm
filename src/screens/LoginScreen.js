@@ -95,6 +95,8 @@ export default function LoginScreen({ navigation }) {
 
       if (userRole === 'super_admin') {
         navigation.replace('SuperAdminDashboard');
+      } else if (userRole === 'sub_admin') {
+        navigation.replace('SubAdminDashboard');
       } else {
         navigation.replace('Home');
       }

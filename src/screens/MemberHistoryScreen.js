@@ -129,7 +129,7 @@ export default function MemberHistoryScreen({ navigation }) {
           onPress={safeGoBack}
           activeOpacity={0.7}
         >
-          <Ionicons name="arrow-back" size={20} color="#173B70" />
+          <Ionicons name="arrow-back" size={20} color="#403F91" />
         </TouchableOpacity>
         <Image
           source={require('../../assets/logo.png')}
@@ -165,7 +165,7 @@ export default function MemberHistoryScreen({ navigation }) {
 
         {loading && !refreshing ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#173B70" />
+            <ActivityIndicator size="large" color="#403F91" />
             <Text style={styles.loadingText}>Loading attendance records...</Text>
           </View>
         ) : (
@@ -180,7 +180,7 @@ export default function MemberHistoryScreen({ navigation }) {
                   setRefreshing(true);
                   loadMemberHistory();
                 }}
-                tintColor="#173B70"
+                tintColor="#403F91"
               />
             }
             renderItem={({ item, index }) => {
@@ -240,7 +240,7 @@ export default function MemberHistoryScreen({ navigation }) {
               {/* Selfie Image */}
               <View style={styles.modalImageWrapper}>
                 {loadingImage ? (
-                  <ActivityIndicator size="small" color="#173B70" />
+                  <ActivityIndicator size="small" color="#403F91" />
                 ) : signedImageUrl ? (
                   <Image source={{ uri: signedImageUrl }} style={styles.modalSelfie} resizeMode="cover" />
                 ) : (
@@ -338,7 +338,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontFamily: fonts.serifSemiBold,
-    color: '#173B70',
+    color: '#403F91',
   },
   headerSubtitle: {
     fontSize: 12,
@@ -362,7 +362,7 @@ const styles = StyleSheet.create({
   summaryLabel: {
     fontSize: 11,
     fontFamily: fonts.sansBold,
-    color: '#173B70',
+    color: '#403F91',
     letterSpacing: 0.8,
   },
   summarySub: {
@@ -372,7 +372,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   summaryCountBadge: {
-    backgroundColor: '#173B70',
+    backgroundColor: '#403F91',
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 12,
@@ -456,7 +456,7 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 15,
     fontFamily: fonts.sansBold,
-    color: '#173B70',
+    color: '#403F91',
     marginBottom: 6,
   },
   emptySubtitle: {
@@ -492,7 +492,7 @@ const styles = StyleSheet.create({
   modalHeaderTitle: {
     fontSize: 18,
     fontFamily: fonts.serifSemiBold,
-    color: '#173B70',
+    color: '#403F91',
   },
   modalImageWrapper: {
     height: 220,
@@ -526,7 +526,7 @@ const styles = StyleSheet.create({
   modalActName: {
     fontSize: 15,
     fontFamily: fonts.sansBold,
-    color: '#173B70',
+    color: '#403F91',
     marginBottom: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#E2E8F0',
@@ -553,7 +553,7 @@ const styles = StyleSheet.create({
     color: '#10B981',
   },
   doneButton: {
-    backgroundColor: '#173B70',
+    backgroundColor: '#403F91',
     borderRadius: 12,
     paddingVertical: 13,
     alignItems: 'center',
